@@ -42,6 +42,68 @@ $ yarn emulate
 
 Dummy data is populated at [http://localhost:3000/run/nitrous-gerbil-65](http://localhost:3000/run/nitrous-gerbil-65).
 
+## 📺 Twitch Overlay
+
+A standalone OBS Browser Source overlay is included at `public/overlay.html`. It connects directly to the same Firebase database and displays live Soul Link pairings with real-time updates.
+
+### Setup
+
+1. **Start the dev server** (or deploy the project):
+   ```bash
+   yarn dev
+   ```
+
+2. **Create a run** in the tracker UI and note the run ID (e.g., `nitrous-gerbil-65`).
+
+3. **Open the overlay** in your browser to test:
+   ```
+   http://localhost:3000/overlay.html?run=YOUR_RUN_ID
+   ```
+
+4. **Add as OBS Browser Source:**
+   - In OBS, add a new **Browser** source.
+   - Set the URL to: `http://localhost:3000/overlay.html?run=YOUR_RUN_ID`
+   - Set Width: `1920`, Height: `400`
+   - Enable "Refresh browser when scene becomes active"
+   - Background: Transparent (OBS default)
+
+### URL Parameters
+
+| Parameter | Example | Description |
+|-----------|---------|-------------|
+| `run` | `?run=nitrous-gerbil-65` | **Required.** The run ID to display. |
+| `admin` | `?admin=true` | Shows swap simulation buttons (hidden from viewers). |
+| `shiny` | `?shiny=true` | Shows shiny Gen V sprites instead of normal. |
+| `female` | `?female=true` | Shows female variant sprites. Combine with `shiny` for shiny female. |
+
+### Testing with Dummy Data
+
+1. Start the Firebase emulator: `yarn emulate`
+2. Start the dev server: `yarn dev`
+3. Open the overlay: `http://localhost:3000/overlay.html?run=nitrous-gerbil-65`
+4. The dummy run has one pair: **Bulbasaur** (Ash) ↔ **Squirtle** (Misty)
+
+### Testing Faints & Swaps
+
+**Faints:** In the tracker UI, click on a Pokémon → "Add Event" → select "Defeated" → the overlay will update in real-time showing the pair as dead.
+
+**Swaps:** Open the overlay with `?admin=true` to reveal admin buttons. Click "⤾ [Route Name]" to simulate a swap — a gold "⤾ Swapped" badge will appear for 10 seconds.
+
+### Sprite Variants
+
+The overlay uses **Gen V (Black/White) sprites** from the PokeAPI sprite repository. Configure via URL params:
+- Normal: `?shiny=false&female=false` (default)
+- Shiny: `?shiny=true`
+- Female: `?female=true`
+- Shiny Female: `?shiny=true&female=true`
+
+### Production Deployment
+
+When deploying to production (e.g., Vercel), the overlay will be available at:
+```
+https://your-domain.vercel.app/overlay.html?run=YOUR_RUN_ID
+```
+
 ## 📄 License
 
 [MIT](https://github.com/jynnie/soullocke/blob/main/LICENSE) © [jynnie](https://github.com/jynnie)
