@@ -157,7 +157,7 @@
       padding-top: 2em;
       padding-bottom: 2em;
       display: flex;
-      flex-direction: row-reverse;
+      flex-direction: row;
       justify-content: center;
       gap: 16px;
       transform: scale(1.5) translate(0px, -4em);
@@ -718,6 +718,23 @@
       return hasFaintedEvent(pokemon);
     }
 
+    /**
+     * If a Pokémon has an evolved event, return the evolved species name.
+     * Otherwise return the original name.
+     */
+    function getEffectiveSpeciesName(pokemon) {
+      if (!pokemon || !pokemon.events) return pokemon?.name || null;
+      const events = Object.values(pokemon.events);
+      // Find the latest evolved event
+      let evolvedName = null;
+      for (const e of events) {
+        if (e.type === EventType.evolved && e.details?.evolution) {
+          evolvedName = e.details.evolution;
+        }
+      }
+      return evolvedName || pokemon.name || null;
+    }
+
     function getPlayerPokemonList(player) {
       if (!player || !player.pokemon) return [];
       return Object.entries(player.pokemon).map(([originKey, p]) => ({
@@ -821,12 +838,12 @@
 
       if (pairs.length === 0) return;
 
-      // Batch resolve dex IDs
+      // Batch resolve dex IDs (use evolved species name if applicable)
       const dexPromises = [];
       for (const pair of pairs) {
-        if (pair.p1) dexPromises.push(getDexId(pair.p1.name));
+        if (pair.p1) dexPromises.push(getDexId(getEffectiveSpeciesName(pair.p1)));
         else dexPromises.push(Promise.resolve(null));
-        if (pair.p2) dexPromises.push(getDexId(pair.p2.name));
+        if (pair.p2) dexPromises.push(getDexId(getEffectiveSpeciesName(pair.p2)));
         else dexPromises.push(Promise.resolve(null));
       }
       const dexIds = await Promise.all(dexPromises);
