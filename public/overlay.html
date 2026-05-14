@@ -311,8 +311,8 @@
 
     /* Sprite 1 (player 1) — higher, offset left */
     .circle-sprite.p1 {
-      top: -16px;
-      right: 0px;
+      top: -8px;
+      right: 8px;
       z-index: 2;
       filter: drop-shadow(7px 8px 0px #00000040);
     }
@@ -591,6 +591,35 @@
     // Cache for species → dex ID lookups
     const dexCache = {};
 
+    // Pokémon type → hex color (primary type colors)
+    const TYPE_COLORS = {
+      normal: '#A8A878', fire: '#F08030', water: '#6890F0',
+      electric: '#F8D030', grass: '#78C850', ice: '#98D8D8',
+      fighting: '#C03028', poison: '#A040A0', ground: '#E0C068',
+      flying: '#A890F0', psychic: '#F85888', bug: '#A8B820',
+      rock: '#B8A038', ghost: '#705898', dragon: '#7038F8',
+      dark: '#705848', steel: '#B8B8D0', fairy: '#EE99AC',
+    };
+
+    // Cache for species → primary type name
+    const typeCache = {};
+
+    async function getPrimaryType(speciesName) {
+      const name = speciesName.toLowerCase().trim();
+      if (typeCache[name]) return typeCache[name];
+
+      try {
+        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const typeName = data.types?.[0]?.type?.name || null;
+        typeCache[name] = typeName;
+        return typeName;
+      } catch {
+        return null;
+      }
+    }
+
     async function getDexId(speciesName) {
       const name = speciesName.toLowerCase().trim();
       if (dexCache[name]) return dexCache[name];
@@ -838,19 +867,25 @@
 
       if (pairs.length === 0) return;
 
-      // Batch resolve dex IDs (use evolved species name if applicable)
+      // Batch resolve dex IDs and type colors (use evolved species name if applicable)
       const dexPromises = [];
+      const typePromises = [];
       for (const pair of pairs) {
-        if (pair.p1) dexPromises.push(getDexId(getEffectiveSpeciesName(pair.p1)));
-        else dexPromises.push(Promise.resolve(null));
-        if (pair.p2) dexPromises.push(getDexId(getEffectiveSpeciesName(pair.p2)));
-        else dexPromises.push(Promise.resolve(null));
+        const name1 = pair.p1 ? getEffectiveSpeciesName(pair.p1) : null;
+        const name2 = pair.p2 ? getEffectiveSpeciesName(pair.p2) : null;
+        dexPromises.push(name1 ? getDexId(name1) : Promise.resolve(null));
+        dexPromises.push(name2 ? getDexId(name2) : Promise.resolve(null));
+        typePromises.push(name1 ? getPrimaryType(name1) : Promise.resolve(null));
+        typePromises.push(name2 ? getPrimaryType(name2) : Promise.resolve(null));
       }
       const dexIds = await Promise.all(dexPromises);
+      const typeNames = await Promise.all(typePromises);
 
       pairs.forEach((pair, idx) => {
         const dexId1 = dexIds[idx * 2];
         const dexId2 = dexIds[idx * 2 + 1];
+        const type1 = typeNames[idx * 2];
+        const type2 = typeNames[idx * 2 + 1];
 
         const p1Dead = pair.p1 && isPokemonDead(pair.p1);
         const p2Dead = pair.p2 && isPokemonDead(pair.p2);
@@ -863,6 +898,18 @@
         if (isDead) circle.classList.add('dead');
         if (isSwapped) circle.classList.add('swapped');
         circle.dataset.origin = pair.originKey;
+
+        // Apply type-colored diagonal gradient (only if alive)
+        if (!isDead) {
+          const c1 = TYPE_COLORS[type1] || 'rgba(255,255,255,0.08)';
+          const c2 = TYPE_COLORS[type2] || 'rgba(255,255,255,0.08)';
+          circle.style.background = `
+            linear-gradient(135deg,
+              ${c1}44 0%, ${c1}11 50%,
+              ${c2}11 50%, ${c2}44 100%
+            )
+          `;
+        }
 
         // Route name (top of circle)
         const routeEl = document.createElement('span');
