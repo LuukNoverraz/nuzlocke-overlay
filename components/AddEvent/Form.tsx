@@ -1,6 +1,7 @@
 import cn from "classnames";
 import { Button } from "components/ui-library/Button";
 import { SearchableSelect } from "components/ui-library/SearchableSelect";
+import { useEvolutionChain } from "hooks/useEvolutionChain";
 import { useTimelineLocations } from "hooks/useTimelineLocations";
 import {
   EVENT_NAME_TO_TYPE,
@@ -10,7 +11,6 @@ import {
   PokemonEvent,
   PokemonLocation,
 } from "models";
-import { RunContext } from "pages/run/[id]";
 import React, { useCallback, useEffect } from "react";
 import styles from "styles/Form.module.scss";
 import { getLastItem } from "utils/getLastItem";
@@ -29,9 +29,9 @@ function AddEventForm({
   ) => void;
   onCancel?: () => void;
 }) {
-  const { allPokemon } = React.useContext(RunContext);
   const timelineLocations = useTimelineLocations();
   const latestLocation = getLastItem(timelineLocations);
+  const { evolutions, loading: evoLoading } = useEvolutionChain(pokemon.name);
 
   //* States----------------------------#07cf7f
   const [location, setLocation] = React.useState<string | undefined>(
@@ -167,10 +167,10 @@ function AddEventForm({
             className="grow-1"
             onChange={(value) => setEvolution(value)}
             value={evolution}
-            placeholder="Select evolution"
-            options={allPokemon?.map((p) => ({
-              label: p.name,
-              value: p.name,
+            placeholder={evoLoading ? "Loading evolutions..." : "Select evolution"}
+            options={evolutions.map((name) => ({
+              label: name.charAt(0).toUpperCase() + name.slice(1),
+              value: name,
             }))}
           />
         </div>
