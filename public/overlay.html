@@ -202,21 +202,19 @@
       transition: all 0.25s ease;
     }
 
-    /* Diagonal sheen across the glass */
+    /* Diagonal sheen across the glass — clipped to circle via border-radius */
     .pair-circle::before {
       content: '';
       position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
+      inset: 0;
+      border-radius: 50%;
       background: linear-gradient(
         135deg,
-        transparent 30%,
-        rgba(255, 255, 255, 0.06) 45%,
-        rgba(255, 255, 255, 0.10) 50%,
-        rgba(255, 255, 255, 0.06) 55%,
-        transparent 70%
+        transparent 25%,
+        rgba(255, 255, 255, 0.08) 40%,
+        rgba(255, 255, 255, 0.14) 50%,
+        rgba(255, 255, 255, 0.08) 60%,
+        transparent 75%
       );
       pointer-events: none;
       z-index: 0;
@@ -840,17 +838,21 @@
         });
       }
 
-      // Sort: swapped pairs first, then alive pairs, then dead pairs
+      // Build index lookup from timeline to preserve fill order
+      const timelineOrder = {};
+      if (timeline) {
+        Object.values(timeline).forEach((entry) => {
+          if (entry?.key !== undefined) {
+            timelineOrder[entry.key] = entry.index;
+          }
+        });
+      }
+
+      // Sort by timeline order (the order they were filled in on the site)
       pairs.sort((a, b) => {
-        if (a.swappedAt && !b.swappedAt) return -1;
-        if (!a.swappedAt && b.swappedAt) return 1;
-
-        const aDead = (a.p1 && isPokemonDead(a.p1)) || (a.p2 && isPokemonDead(a.p2));
-        const bDead = (b.p1 && isPokemonDead(b.p1)) || (b.p2 && isPokemonDead(b.p2));
-
-        if (aDead && !bDead) return 1;
-        if (!aDead && bDead) return -1;
-        return 0;
+        const idxA = timelineOrder[a.originKey] ?? 9999;
+        const idxB = timelineOrder[b.originKey] ?? 9999;
+        return idxA - idxB;
       });
 
       // Render
@@ -909,10 +911,15 @@
         if (!isDead) {
           const c1 = TYPE_COLORS[type1] || 'rgba(255,255,255,0.08)';
           const c2 = TYPE_COLORS[type2] || 'rgba(255,255,255,0.08)';
+          // Two stacked gradients: white glass tint on top, type colors below
           circle.style.background = `
             linear-gradient(135deg,
-              ${c1}44 0%, ${c1}11 50%,
-              ${c2}11 50%, ${c2}44 100%
+              rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 50%,
+              rgba(255,255,255,0.18) 100%
+            ),
+            linear-gradient(135deg,
+              ${c1}AA 0%, ${c1}66 40%,
+              ${c2}66 60%, ${c2}AA 100%
             )
           `;
         }
