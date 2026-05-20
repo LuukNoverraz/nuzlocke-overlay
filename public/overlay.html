@@ -594,6 +594,41 @@
     const ART_VARIANT = urlParams.get('art') === 'home' ? 'home' : 'official-artwork';
 
     // ============================================================
+    //  GOOGLE FONT OVERRIDE
+    //  @section fonts
+    //
+    //  Streamers can replace the default FLURO font with any Google
+    //  Font by passing `?font=FontName` in the URL.
+    //
+    //  Examples:
+    //    ?attempt4&font=Press+Start+2P
+    //    ?attempt4&font=Rubik&font-weight=300;400;600;700
+    //
+    //  The font is loaded dynamically via a <link> tag injected into
+    //  <head>. Once loaded, it becomes the primary font-family with
+    //  FLURO as fallback.
+    //
+    //  @const {string|null} FONT_NAME - Google Font name (e.g. "Press+Start+2P")
+    //  @const {string}      FONT_WEIGHTS - Semicolon-separated weights (default "400;600;700")
+    // ============================================================
+
+    /**
+     * Google Font family name from the `?font=` URL parameter.
+     * Spaces should be encoded as `+` (e.g. `?font=Press+Start+2P`).
+     * If omitted, the default FLURO font is used.
+     * @const {string|null}
+     */
+    const FONT_NAME = urlParams.get('font') || null;
+
+    /**
+     * Font weights to load from Google Fonts, semicolon-separated.
+     * Only used when `?font=` is also specified.
+     * Defaults to "400;600;700" (regular, semi-bold, bold).
+     * @const {string}
+     */
+    const FONT_WEIGHTS = urlParams.get('font-weight') || '400;600;700';
+
+    // ============================================================
     //  DOM REFS
     //  @section dom
     // ============================================================
@@ -1263,9 +1298,93 @@
     }
 
     // ============================================================
+    //  GOOGLE FONT LOADER
+    //  @section font-loader
+    //
+    //  If `?font=FontName` was provided in the URL, dynamically inject
+    //  a <link> tag to load that font from Google Fonts, then update
+    //  the body's font-family once loaded.
+    //
+    //  This runs before the overlay data fetch so the font is ready
+    //  (or at least loading) by the time the first render happens.
+    // ============================================================
+
+    /**
+     * Dynamically load a Google Font and apply it as the primary font.
+     *
+     * Injects a `<link rel="stylesheet">` into `<head>` pointing to the
+     * Google Fonts CSS2 API. On load, updates `document.body.style.fontFamily`
+     * so all text uses the chosen font with FLURO as fallback.
+     *
+     * If `?font=` was not specified, this function does nothing.
+     *
+     * @function loadGoogleFont
+     * @returns {void}
+     *
+     * @example
+     *   // URL: ?attempt4&font=Press+Start+2P
+     *   loadGoogleFont();
+     *   // → <link href="...Press+Start+2P:wght@400;600;700..." rel="stylesheet">
+     *   // → body font-family: 'Press Start 2P', 'FLURO', sans-serif
+     */
+    function loadGoogleFont() {
+      if (!FONT_NAME) return;
+
+      // Build the Google Fonts URL.
+      // Uses the CSS2 API which supports variable weights via :wght@ syntax.
+      // encodeURIComponent handles special characters in font names.
+      const fontFamily = FONT_NAME.replace(/\+/g, ' ');
+      const href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@${FONT_WEIGHTS}&display=swap`;
+
+      // Inject the stylesheet link
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+
+      // Once the font is loaded, inject a <style> tag that overrides
+      // all FLURO-specific font-family declarations with !important.
+      //
+      // We cannot just set document.body.style.fontFamily because every
+      // text element in the CSS has its own explicit `font-family: 'FLURO'`
+      // declaration (e.g. .pair-name-primary, .pair-name-solo, #loading).
+      // Those class-level rules have higher specificity than the body's
+      // inherited font-family, so the Google Font would never apply to
+      // child elements without !important.
+      link.onload = () => {
+        const style = document.createElement('style');
+        style.textContent = `
+          body,
+          #header h1,
+          #header .run-id,
+          .pair-name-primary,
+          .pair-name-secondary,
+          .pair-name-solo,
+          #loading,
+          #error,
+          #empty,
+          .admin-label,
+          .admin-swap-btn {
+            font-family: '${fontFamily}', 'FLURO', 'Segoe UI', sans-serif !important;
+          }
+        `;
+        document.head.appendChild(style);
+        console.log(`[Overlay] Google Font loaded: ${fontFamily}`);
+      };
+
+      link.onerror = () => {
+        console.warn(`[Overlay] Failed to load Google Font: ${fontFamily}. Falling back to FLURO.`);
+      };
+
+      document.head.appendChild(link);
+    }
+
+    // ============================================================
     //  INIT
     // ============================================================
     function init() {
+      // Load Google Font (if specified via ?font=) before fetching data
+      loadGoogleFont();
+
       // Show overlay with a small delay for smooth entrance
       setTimeout(() => {
         overlayEl.classList.remove('hidden');

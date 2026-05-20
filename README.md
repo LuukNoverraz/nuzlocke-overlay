@@ -1,6 +1,6 @@
 # Soul Link Overlay
 
-A **standalone OBS Browser Source** for displaying live Soul Link Nuzlocke pairings during a Twitch stream.
+A **standalone OBS Browser Source** for displaying live **Soul Link Nuzlocke** (two players, linked pairs) or **Solo Nuzlocke** (single player) pairings during a Twitch stream.
 
 Reads pairing data from `public/run.txt` and renders it as a transparent overlay with Pokémon sprites, type-colored circles, and auto-refresh.
 
@@ -94,6 +94,20 @@ Save `public/run.txt` — the overlay auto-updates within 3 seconds.
 | `?shiny=true` | `?attempt4&shiny=true` | Global shiny override for all sprites |
 | `?female=true` | `?attempt4&female=true` | Shows female variant sprites |
 | `?art=home` | `?attempt4&art=home` | Uses PokeAPI "home" artwork instead of "official-artwork" |
+| `?font=FontName` | `?attempt4&font=Press+Start+2P` | Replace FLURO with any Google Font (spaces → `+`) |
+| `?font-weight=...` | `?attempt4&font=Rubik&font-weight=300;400;600;700` | Font weights to load (semicolon-separated, default `400;600;700`) |
+
+### Font Customization
+
+The overlay uses **FLURO** by default, but you can swap to any Google Font:
+
+```
+?attempt4&font=Press+Start+2P
+?attempt4&font=Rubik&font-weight=300;400;600;700
+?attempt4&font=Montserrat&font-weight=400;700
+```
+
+The font is loaded dynamically via the Google Fonts CSS2 API. FLURO is always kept as a fallback in case the Google Font fails to load.
 
 ## Project Structure
 
@@ -117,4 +131,4 @@ soullocke/
 
 **Modifications** Copyright (c) 2025 Luuk Noverraz
 
-This project is a fork of the original [soullocke](https://github.com/jynnie/soullocke) by Jessica Tang, stripped down to a standalone overlay and extended with solo Nuzlocke support, swap simulation, and OBS-optimized rendering.
+This project is a fork of the original [soullocke](https://github.com/jynnie/soullocke) by Jessica Tang, stripped down to a standalone overlay and extended with solo Nuzlocke support, swap simulation, Google Font customization, and OBS-optimized rendering.
