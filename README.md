@@ -101,8 +101,57 @@ The overlay uses **Gen V (Black/White) sprites** from the PokeAPI sprite reposit
 
 When deploying to production (e.g., Vercel), the overlay will be available at:
 ```
-https://your-domain.vercel.app/overlay.html?run=YOUR_RUN_ID
+https://your-domain.vercel.app/overlay.html?attempt4
 ```
+
+## 🎮 Twitch Overlay (run.txt mode)
+
+The overlay can also run **without Firebase** by reading from `public/run.txt`. This is ideal for OBS Browser Sources — just edit the text file and the overlay auto-refreshes every 3 seconds.
+
+### How it works
+
+1. **Edit `public/run.txt`** with your Soul Link pairings in this format:
+
+```
+ATTEMPT 4
+
+- Route 201
+Nightfall & Nightfall
+Piplup & Piplup
+
+- Route 202 (DEAD)
+Biefstuk & Kipstuk
+Bidoof & Starly
+
+- Lake Verity
+Royalty & Tyranny
+Starly & Bidoof
+```
+
+**Format rules:**
+- **Line 1:** Title (e.g. `ATTEMPT 4`) — becomes the URL slug (`attempt4`)
+- **Lines starting with `- `:** Route/pairing header
+- **Next non-blank line:** Nicknames — `Player1 & Player2`
+- **Next non-blank line:** Species — `Player1 & Player2`
+- **`(DEAD)` or `(BOX)`** on a route line → the entire pairing is **hidden** from the overlay
+- Blank lines are ignored
+
+2. **Open the overlay** in OBS as a Browser Source:
+```
+http://localhost:3000/overlay.html?attempt4
+```
+The query param (`?attempt4`) should match the slug from line 1 of `run.txt`.
+
+3. **Edit `run.txt` live** while streaming — the overlay auto-updates every 3 seconds.
+
+### URL Parameters
+
+| Param | Example | Effect |
+|---|---|---|
+| `?slug` | `?attempt4` | Matches against the title in `run.txt` |
+| `?admin=true` | `?attempt4&admin=true` | Shows swap simulation buttons |
+| `?shiny=true` | `?attempt4&shiny=true` | Shows shiny sprites |
+| `?female=true` | `?attempt4&female=true` | Shows female sprites |
 
 ## 📄 License
 

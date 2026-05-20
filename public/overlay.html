@@ -5,12 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Soul Link Overlay</title>
 
-  <!-- Firebase v9 compat SDK (works with <script> tags) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js">
-  </script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js">
-  </script>
-
   <style>
     /* ============================================================
        RESET & BASE
@@ -75,7 +69,7 @@
       flex-direction: column;
       align-items: center;
       transition: opacity 0.4s ease;
-      pointer-events: none; /* let clicks pass through to game */
+      pointer-events: none;
     }
 
     #overlay.hidden {
@@ -92,7 +86,7 @@
       gap: 12px;
       padding: 4px 0 8px 0;
       flex-shrink: 0;
-      pointer-events: auto; /* re-enable for admin buttons */
+      pointer-events: auto;
     }
 
     #header .status-dot {
@@ -138,14 +132,6 @@
       letter-spacing: 0.05em;
     }
 
-    #header .player-names {
-      font-family: 'FLURO', sans-serif;
-      font-weight: 300;
-      font-size: 0.65rem;
-      color: rgba(255, 255, 255, 0.35);
-      letter-spacing: 0.04em;
-    }
-
     /* ============================================================
        PAIRS ROW — horizontal scroll of circles
        ============================================================ */
@@ -161,8 +147,7 @@
       justify-content: center;
       gap: 16px;
       transform: scale(1.5) translate(0px, -4em);
-      pointer-events: auto; /* re-enable for hover effects */
-      /* Hide scrollbar */
+      pointer-events: auto;
       scrollbar-width: none;
       -ms-overflow-style: none;
     }
@@ -186,10 +171,8 @@
       justify-content: center;
       overflow: visible;
       cursor: default;
-      /* Clip the ::before sheen to the circle shape without clipping children */
       clip-path: none;
       -webkit-clip-path: none;
-      /* Glassy background with sheen */
       background: linear-gradient(
         135deg,
         rgba(255, 255, 255, 0.52) 0%,
@@ -202,7 +185,6 @@
       transition: all 0.25s ease;
     }
 
-    /* Diagonal sheen across the glass — clipped to circle via border-radius */
     .pair-circle::before {
       content: '';
       position: absolute;
@@ -225,7 +207,6 @@
       filter: brightness(1.15);
     }
 
-    /* Dead state — subtle red tint */
     .pair-circle.dead {
       border-color: rgba(248, 113, 113, 0.15);
       background: linear-gradient(
@@ -298,7 +279,7 @@
     }
 
     /* ============================================================
-       SPRITES inside circle — stacked diagonally like Box view
+       SPRITES inside circle — stacked diagonally
        ============================================================ */
     .circle-sprite {
       position: absolute;
@@ -309,16 +290,13 @@
       z-index: 1;
     }
 
-    /* Sprite 1 (player 1) — pops out top-left */
     .circle-sprite.p1 {
       top: 8px;
       right: 64px;
-      /* filter: drop-shadow(7px 8px 0px #00000040); */
       width: 7em;
       height: 7em;
     }
 
-    /* Sprite 2 (player 2) — pops out bottom-right */
     .circle-sprite.p2 {
       top: 40px;
       right: -8px;
@@ -504,25 +482,24 @@
         <h1>SOUL LINK</h1>
         <span class="run-id" id="runIdDisplay"></span>
       </div>
-      <span class="player-names" id="playerNamesDisplay"></span>
     </div>
 
     <!-- Loading State -->
     <div id="loading" class="active">
       <div class="loading-spinner"></div>
-      <div>Connecting to Soul Link...</div>
+      <div>Loading Soul Link...</div>
     </div>
 
     <!-- Error State -->
     <div id="error">
-      <div>⚠ Connection Error</div>
+      <div>⚠ Error</div>
       <div id="errorMessage" style="font-size:0.6rem;margin-top:4px;"></div>
     </div>
 
     <!-- Empty State -->
     <div id="empty">
       <div>No Soul Link pairs yet</div>
-      <div style="font-size:0.55rem;margin-top:4px;opacity:0.5;">Add Pokémon to get started!</div>
+      <div style="font-size:0.55rem;margin-top:4px;opacity:0.5;">Add pairings to run.txt to get started!</div>
     </div>
 
     <!-- Pairs Row (horizontal circles) -->
@@ -538,33 +515,11 @@
 
   <script>
     // ============================================================
-    //  FIREBASE CONFIGURATION
-    //  Replace these values with your own Firebase project config.
-    //  Get these from: Firebase Console → Project Settings → General
-    //  → Your apps → Web app → Firebase SDK snippet → Config
-    // ============================================================
-    // On localhost the emulator uses the soullocke-f7500 namespace.
-    // In production the real cloud database uses soullocke-31a7f.
-    const DB_URL = window.location.hostname === 'localhost'
-      ? "https://soullocke-f7500-default-rtdb.firebaseio.com"
-      : "https://soullocke-31a7f-default-rtdb.europe-west1.firebasedatabase.app";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw4fEs5t1WJy3TWC93Tuz-Fmq-2z0nJLg",
-      authDomain: "soullocke-31a7f.firebaseapp.com",
-      databaseURL: DB_URL,
-      projectId: "soullocke-31a7f",
-      storageBucket: "soullocke-31a7f.firebasestorage.app",
-      messagingSenderId: "279335192963",
-      appId: "1:279335192963:web:cb901cf503c718fae50eb6",
-      measurementId: "G-RY3Y5G02QF"
-    };
-
-    // ============================================================
     //  URL PARAMETERS
     // ============================================================
     const urlParams = new URLSearchParams(window.location.search);
-    const RUN_ID = urlParams.get('run') || 'nitrous-gerbil-65';
+    // The query param is the slug itself (e.g. ?attempt4)
+    const QUERY_SLUG = window.location.search.replace(/^\?/, '').trim();
     const IS_ADMIN = urlParams.get('admin') === 'true';
     const SHINY = urlParams.get('shiny') === 'true';
     const FEMALE = urlParams.get('female') === 'true';
@@ -575,7 +530,6 @@
     const overlayEl = document.getElementById('overlay');
     const statusDot = document.getElementById('statusDot');
     const runIdDisplay = document.getElementById('runIdDisplay');
-    const playerNamesDisplay = document.getElementById('playerNamesDisplay');
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
     const errorMessage = document.getElementById('errorMessage');
@@ -586,16 +540,12 @@
 
     // ============================================================
     //  SPRITE URL BUILDER
-    //  Uses Pokemon HOME artwork from PokeAPI — consistently framed
-    //  at 512×512 so small and large Pokemon appear the same size.
     // ============================================================
     const SPRITE_BASE =
       'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
 
-    // Cache for species → dex ID lookups
     const dexCache = {};
 
-    // Pokémon type → hex color (primary type colors)
     const TYPE_COLORS = {
       normal: '#A8A77A', fire: '#EE8130', water: '#6390F0',
       electric: '#F7D02C', grass: '#7AC74C', ice: '#96D9D6',
@@ -605,13 +555,11 @@
       dark: '#705746', steel: '#B7B7CE', fairy: '#D685AD',
     };
 
-    // Cache for species → primary type name
     const typeCache = {};
 
     async function getPrimaryType(speciesName) {
       const name = speciesName.toLowerCase().trim();
       if (typeCache[name]) return typeCache[name];
-
       try {
         const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
         if (!res.ok) return null;
@@ -627,7 +575,6 @@
     async function getDexId(speciesName) {
       const name = speciesName.toLowerCase().trim();
       if (dexCache[name]) return dexCache[name];
-
       try {
         const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
         if (!res.ok) return null;
@@ -641,246 +588,165 @@
 
     function buildSpriteUrl(dexId, shiny, female) {
       if (!dexId) return null;
-
       let path = `${SPRITE_BASE}/`;
-
-      if (shiny && female) {
-        path += `shiny/female/${dexId}.png`;
-      } else if (shiny) {
-        path += `shiny/${dexId}.png`;
-      } else if (female) {
-        path += `female/${dexId}.png`;
-      } else {
-        path += `${dexId}.png`;
-      }
-
+      if (shiny && female) path += `shiny/female/${dexId}.png`;
+      else if (shiny) path += `shiny/${dexId}.png`;
+      else if (female) path += `female/${dexId}.png`;
+      else path += `${dexId}.png`;
       return path;
     }
 
     // ============================================================
-    //  FIREBASE INIT
-    //  Note: The database is publicly readable (the tracker doesn't
-    //  use auth), so we skip authentication entirely.
+    //  RUN.TXT PARSER
     // ============================================================
-    let firebaseApp, db, runRef;
-
-    function initFirebase() {
-      try {
-        firebaseApp = firebase.apps.length
-          ? firebase.app()
-          : firebase.initializeApp(firebaseConfig);
-        db = firebaseApp.database();
-
-        // Connect to local emulator for development/testing.
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          db.useEmulator('localhost', 9000);
-          console.log('[Overlay] Using Firebase emulator on localhost:9000');
-        }
-
-        return true;
-      } catch (err) {
-        console.error('[Overlay] Firebase init error:', err);
-        return false;
-      }
-    }
-
-    // ============================================================
-    //  DATA SUBSCRIPTION (no auth needed — public read access)
-    // ============================================================
-    function connectToRun() {
-      showLoading();
-
-      try {
-        const path = `${RUN_ID}`;
-        console.log('[Overlay] 🔍 Reading from Firebase path:', path);
-        console.log('[Overlay] 🔍 Firebase config:', {
-          projectId: firebaseConfig.projectId,
-          databaseURL: firebaseConfig.databaseURL,
-          hostname: window.location.hostname,
-        });
-
-        runRef = db.ref(path);
-
-        runRef.on('value', (snapshot) => {
-          console.log('[Overlay] 📦 Snapshot received. Exists:', snapshot.exists(), 'Key:', snapshot.key);
-          const data = snapshot.val();
-          if (!data) {
-            console.warn('[Overlay] ❌ Snapshot val() is null/undefined. Run not found at path:', path);
-            console.log('[Overlay] 🔎 Snapshot toJSON:', JSON.stringify(snapshot.toJSON()));
-            showError('Run not found. Check your run ID.');
-            return;
-          }
-          console.log('[Overlay] ✅ Run data received. Keys:', Object.keys(data));
-          console.log('[Overlay] 📋 Data preview:', JSON.stringify(data).substring(0, 500));
-          handleRunUpdate(data);
-        });
-
-        statusDot.className = 'status-dot';
-        runIdDisplay.textContent = RUN_ID;
-
-      } catch (err) {
-        console.error('[Overlay] Connection error:', err);
-        showError(err.message || 'Failed to connect to Firebase');
-      }
-    }
-
-    // ============================================================
-    //  DATA HANDLING
-    // ============================================================
-    const EventType = {
-      catch: 0,
-      missed: 1,
-      moved: 2,
-      defeated: 3,
-      soulDeath: 4,
-      evolved: 5,
-      soulMiss: 6,
-    };
-
-    function hasFaintedEvent(pokemon) {
-      if (!pokemon || !pokemon.events) return false;
-      const events = Object.values(pokemon.events);
-      return events.some(
-        (e) =>
-          e.type === EventType.defeated ||
-          e.type === EventType.soulDeath
-      );
-    }
-
-    function isPokemonDead(pokemon) {
-      return hasFaintedEvent(pokemon);
-    }
 
     /**
-     * If a Pokémon has an evolved event, return the evolved species name.
-     * Otherwise return the original name.
+     * Parse the run.txt format:
+     *
+     * Line 1: Title (e.g. "ATTEMPT 4") → slug = "attempt4"
+     * Blank lines are ignored.
+     * Lines starting with "- " are route headers.
+     *   If the route header ends with (DEAD) or (BOX), skip the entire pairing.
+     * The next non-blank line after a route header = nicknames (P1 & P2)
+     * The next non-blank line after that = species (P1 & P2)
      */
-    function getEffectiveSpeciesName(pokemon) {
-      if (!pokemon || !pokemon.events) return pokemon?.name || null;
-      const events = Object.values(pokemon.events);
-      // Find the latest evolved event
-      let evolvedName = null;
-      for (const e of events) {
-        if (e.type === EventType.evolved && e.details?.evolution) {
-          evolvedName = e.details.evolution;
-        }
-      }
-      return evolvedName || pokemon.name || null;
-    }
+    function parseRunTxt(text) {
+      const lines = text.split('\n');
 
-    function getPlayerPokemonList(player) {
-      if (!player || !player.pokemon) return [];
-      return Object.entries(player.pokemon).map(([originKey, p]) => ({
-        ...p,
-        originKey,
-      }));
-    }
+      // Line 1 = title
+      const title = (lines[0] || '').trim();
+      const slug = title.toLowerCase().replace(/\s+/g, '');
 
-    async function handleRunUpdate(data) {
-      const players = data.players;
-      const timeline = data.timeline || {};
-      const swaps = data.swaps || {};
-
-      if (!players) {
-        showEmpty();
-        return;
-      }
-
-      const playerEntries = Object.entries(players);
-      if (playerEntries.length === 0) {
-        showEmpty();
-        return;
-      }
-
-      // Update player names in header
-      const playerNames = playerEntries.map(([, p]) => p.name || 'Player').join(' & ');
-      playerNamesDisplay.textContent = playerNames;
-
-      // Build a map: originKey → human-readable route name
-      const routeNames = {};
-      if (timeline) {
-        Object.values(timeline).forEach((entry) => {
-          if (entry && entry.key && entry.name) {
-            routeNames[entry.key] = entry.name;
-          }
-        });
-      }
-
-      // Collect all unique origin keys across all players
-      const originMap = {}; // originKey → { p1Pokemon, p2Pokemon }
-      playerEntries.forEach(([playerId, player]) => {
-        const pokemonList = getPlayerPokemonList(player);
-        pokemonList.forEach((p) => {
-          const key = p.originKey;
-          if (!originMap[key]) {
-            originMap[key] = { p1: null, p2: null };
-          }
-          if (playerEntries[0][0] === playerId) {
-            originMap[key].p1 = p;
-          } else {
-            originMap[key].p2 = p;
-          }
-        });
-      });
-
-      // Build pairs array
       const pairs = [];
-      for (const [originKey, pair] of Object.entries(originMap)) {
-        const routeName = routeNames[originKey] || originKey;
-        const swappedAt = swaps[originKey]?.swappedAt || null;
+      let i = 1; // skip title line
 
-        pairs.push({
-          originKey,
-          routeName,
-          p1: pair.p1,
-          p2: pair.p2,
-          swappedAt,
-        });
-      }
+      while (i < lines.length) {
+        const line = lines[i].trim();
 
-      // Build index lookup from timeline to preserve fill order
-      const timelineOrder = {};
-      if (timeline) {
-        Object.values(timeline).forEach((entry) => {
-          if (entry?.key !== undefined) {
-            timelineOrder[entry.key] = entry.index;
+        if (line.startsWith('- ')) {
+          // Route header
+          const routePart = line.slice(2).trim();
+
+          // Check for skip markers
+          const upper = routePart.toUpperCase();
+          const isSkipped = upper.endsWith('(DEAD)') || upper.endsWith('(BOX)');
+
+          // Extract clean route name (strip the marker)
+          let routeName = routePart;
+          routeName = routeName.replace(/\s*\(DEAD\)\s*$/i, '').trim();
+          routeName = routeName.replace(/\s*\(BOX\)\s*$/i, '').trim();
+
+          // Find next non-blank line for nicknames
+          i++;
+          while (i < lines.length && lines[i].trim() === '') i++;
+          if (i >= lines.length) break;
+          const nicknameLine = lines[i].trim();
+
+          // Find next non-blank line for species
+          i++;
+          while (i < lines.length && lines[i].trim() === '') i++;
+          if (i >= lines.length) break;
+          const speciesLine = lines[i].trim();
+
+          if (isSkipped) {
+            i++;
+            continue;
           }
-        });
+
+          // Parse "Nick1 & Nick2"
+          const nickParts = nicknameLine.split('&').map(s => s.trim());
+          const nick1 = nickParts[0] || '';
+          const nick2 = nickParts[1] || '';
+
+          // Parse "Species1 & Species2"
+          const specParts = speciesLine.split('&').map(s => s.trim());
+          const spec1 = specParts[0] || '';
+          const spec2 = specParts[1] || '';
+
+          pairs.push({
+            originKey: routeName.toLowerCase().replace(/\s+/g, '-'),
+            routeName: routeName,
+            p1: { nickname: nick1, name: spec1, events: {} },
+            p2: { nickname: nick2, name: spec2, events: {} },
+            swappedAt: null,
+          });
+        }
+
+        i++;
       }
 
-      // Sort by timeline order (the order they were filled in on the site)
-      pairs.sort((a, b) => {
-        const idxA = timelineOrder[a.originKey] ?? 9999;
-        const idxB = timelineOrder[b.originKey] ?? 9999;
-        return idxA - idxB;
-      });
+      return { title, slug, pairs };
+    }
 
-      // Render
-      await renderPairs(pairs);
-      setupAdminPanel(pairs);
+    // ============================================================
+    //  FETCH & LOAD FROM RUN.TXT
+    // ============================================================
+    let lastPairsJson = ''; // for change detection
+    let refreshInterval = null;
 
-      hideAllStates();
-      if (pairs.length === 0) {
-        showEmpty();
-      } else {
-        pairsContainer.style.display = 'flex';
+    async function loadFromRunTxt() {
+      try {
+        const res = await fetch('/run.txt');
+        if (!res.ok) {
+          showError(`Failed to load run.txt (HTTP ${res.status})`);
+          return;
+        }
+        const text = await res.text();
+
+        if (!text.trim()) {
+          showError('run.txt is empty');
+          return;
+        }
+
+        const parsed = parseRunTxt(text);
+
+        // Validate slug against query param (if one was provided)
+        if (QUERY_SLUG && QUERY_SLUG !== parsed.slug && !QUERY_SLUG.startsWith('run=')) {
+          // Show a warning but still render
+          console.warn(`[Overlay] Query slug "${QUERY_SLUG}" doesn't match file title slug "${parsed.slug}"`);
+        }
+
+        // Update header
+        runIdDisplay.textContent = parsed.title;
+
+        // Change detection: only re-render if data actually changed
+        const newJson = JSON.stringify(parsed.pairs);
+        if (newJson === lastPairsJson) return; // no change
+
+        lastPairsJson = newJson;
+
+        // Render
+        await renderPairs(parsed.pairs);
+        setupAdminPanel(parsed.pairs);
+
+        hideAllStates();
+        if (parsed.pairs.length === 0) {
+          showEmpty();
+        } else {
+          pairsContainer.style.display = 'flex';
+        }
+
+        statusDot.className = 'status-dot';
+
+      } catch (err) {
+        console.error('[Overlay] Error loading run.txt:', err);
+        showError(err.message || 'Failed to load run.txt');
       }
     }
 
     // ============================================================
-    //  RENDER — horizontal circles with Box-style duo layout
+    //  RENDER — horizontal circles
     // ============================================================
     async function renderPairs(pairs) {
       pairsContainer.innerHTML = '';
-
       if (pairs.length === 0) return;
 
-      // Batch resolve dex IDs and type colors (use evolved species name if applicable)
+      // Batch resolve dex IDs and type colors
       const dexPromises = [];
       const typePromises = [];
       for (const pair of pairs) {
-        const name1 = pair.p1 ? getEffectiveSpeciesName(pair.p1) : null;
-        const name2 = pair.p2 ? getEffectiveSpeciesName(pair.p2) : null;
+        const name1 = pair.p1 ? pair.p1.name : null;
+        const name2 = pair.p2 ? pair.p2.name : null;
         dexPromises.push(name1 ? getDexId(name1) : Promise.resolve(null));
         dexPromises.push(name2 ? getDexId(name2) : Promise.resolve(null));
         typePromises.push(name1 ? getPrimaryType(name1) : Promise.resolve(null));
@@ -895,48 +761,40 @@
         const type1 = typeNames[idx * 2];
         const type2 = typeNames[idx * 2 + 1];
 
-        const p1Dead = pair.p1 && isPokemonDead(pair.p1);
-        const p2Dead = pair.p2 && isPokemonDead(pair.p2);
-        const isDead = p1Dead || p2Dead;
         const isSwapped = !!pair.swappedAt;
 
         // Build the circle
         const circle = document.createElement('div');
         circle.className = 'pair-circle';
-        if (isDead) circle.classList.add('dead');
         if (isSwapped) circle.classList.add('swapped');
         circle.dataset.origin = pair.originKey;
 
-        // Apply type-colored diagonal gradient (only if alive)
-        if (!isDead) {
-          const c1 = TYPE_COLORS[type1] || 'rgba(255,255,255,0.08)';
-          const c2 = TYPE_COLORS[type2] || 'rgba(255,255,255,0.08)';
-          // Two stacked gradients: white glass tint on top, type colors below
-          circle.style.background = `
-            linear-gradient(135deg,
-              rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 50%,
-              rgba(255,255,255,0.18) 100%
-            ),
-            linear-gradient(135deg,
-              ${c1}AA 0%, ${c1}66 40%,
-              ${c2}66 60%, ${c2}AA 100%
-            )
-          `;
-        }
+        // Apply type-colored diagonal gradient
+        const c1 = TYPE_COLORS[type1] || 'rgba(255,255,255,0.08)';
+        const c2 = TYPE_COLORS[type2] || 'rgba(255,255,255,0.08)';
+        circle.style.background = `
+          linear-gradient(135deg,
+            rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 50%,
+            rgba(255,255,255,0.18) 100%
+          ),
+          linear-gradient(135deg,
+            ${c1}AA 0%, ${c1}66 40%,
+            ${c2}66 60%, ${c2}AA 100%
+          )
+        `;
 
-        // Route name (top of circle)
+        // Route name (hidden, used for data)
         const routeEl = document.createElement('span');
         routeEl.className = 'pair-route';
         routeEl.textContent = pair.routeName;
         circle.appendChild(routeEl);
 
-        // Sprite 1 (player 1) — higher, offset left
+        // Sprite 1 (player 1)
         if (pair.p1) {
           const spriteUrl1 = buildSpriteUrl(dexId1, SHINY, FEMALE);
           if (spriteUrl1) {
             const img1 = document.createElement('img');
             img1.className = 'circle-sprite p1';
-            if (p1Dead) img1.classList.add('dead');
             img1.src = spriteUrl1;
             img1.alt = pair.p1.name || 'pokemon';
             img1.loading = 'lazy';
@@ -945,13 +803,12 @@
           }
         }
 
-        // Sprite 2 (player 2) — lower, offset right
+        // Sprite 2 (player 2)
         if (pair.p2) {
           const spriteUrl2 = buildSpriteUrl(dexId2, SHINY, FEMALE);
           if (spriteUrl2) {
             const img2 = document.createElement('img');
             img2.className = 'circle-sprite p2';
-            if (p2Dead) img2.classList.add('dead');
             img2.src = spriteUrl2;
             img2.alt = pair.p2.name || 'pokemon';
             img2.loading = 'lazy';
@@ -960,20 +817,18 @@
           }
         }
 
-        // Names — "Name1" at top of circle, "& Name2" at bottom
+        // Names
         const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
         const name1 = pair.p1 ? cap(pair.p1.nickname || pair.p1.name || '?') : '—';
         const name2 = pair.p2 ? cap(pair.p2.nickname || pair.p2.name || '?') : '—';
-        // Primary name (top of circle)
+
         const primaryName = document.createElement('span');
         primaryName.className = 'pair-name-primary';
-        if (isDead) primaryName.classList.add('dead');
         primaryName.textContent = name1;
         circle.appendChild(primaryName);
-        // Secondary name with "&" prefix (bottom of circle)
+
         const secondaryName = document.createElement('span');
         secondaryName.className = 'pair-name-secondary';
-        if (isDead) secondaryName.classList.add('dead');
         secondaryName.textContent = `& ${name2}`;
         circle.appendChild(secondaryName);
 
@@ -998,27 +853,18 @@
         btn.textContent = `⤾ ${pair.routeName}`;
         btn.dataset.origin = pair.originKey;
 
-        btn.addEventListener('click', async () => {
-          btn.disabled = true;
-          btn.textContent = '⤾ Swapping...';
-          try {
-            const swapRef = db.ref(`${RUN_ID}/swaps/${pair.originKey}`);
-            await swapRef.set({
-              swappedAt: Date.now(),
-            });
-            btn.textContent = '⤾ Swapped!';
-            setTimeout(() => {
-              btn.textContent = `⤾ ${pair.routeName}`;
-              btn.disabled = false;
-            }, 2000);
-          } catch (err) {
-            console.error('[Overlay] Swap error:', err);
-            btn.textContent = '✕ Error';
-            setTimeout(() => {
-              btn.textContent = `⤾ ${pair.routeName}`;
-              btn.disabled = false;
-            }, 3000);
-          }
+        btn.addEventListener('click', () => {
+          // Toggle swap state locally (no Firebase needed)
+          const wasSwapped = !!pair.swappedAt;
+          pair.swappedAt = wasSwapped ? null : Date.now();
+
+          // Re-render just this circle
+          loadFromRunTxt();
+
+          btn.textContent = wasSwapped ? `⤾ ${pair.routeName}` : '⤾ Swapped!';
+          setTimeout(() => {
+            btn.textContent = `⤾ ${pair.routeName}`;
+          }, 2000);
         });
 
         adminButtons.appendChild(btn);
@@ -1061,20 +907,18 @@
     //  INIT
     // ============================================================
     function init() {
-      if (!initFirebase()) {
-        showError('Failed to initialize Firebase. Check your config.');
-        return;
-      }
-
       // Show overlay with a small delay for smooth entrance
       setTimeout(() => {
         overlayEl.classList.remove('hidden');
       }, 300);
 
-      connectToRun();
+      // Initial load
+      loadFromRunTxt();
+
+      // Auto-refresh every 3 seconds (for OBS / live editing)
+      refreshInterval = setInterval(loadFromRunTxt, 3000);
     }
 
-    // Start when DOM is ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', init);
     } else {
