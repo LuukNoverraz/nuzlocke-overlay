@@ -134,6 +134,7 @@ Starly & Bidoof
 - **Next non-blank line:** Nicknames — `Player1 & Player2`
 - **Next non-blank line:** Species — `Player1 & Player2`
 - **`(DEAD)` or `(BOX)`** on a route line → the entire pairing is **hidden** from the overlay
+- **`(Shiny)`** after a species name → shows the shiny sprite for that Pokémon (e.g. `Piplup (Shiny) & Piplup`)
 - Blank lines are ignored
 
 2. **Open the overlay** in OBS as a Browser Source:
@@ -150,8 +151,9 @@ The query param (`?attempt4`) should match the slug from line 1 of `run.txt`.
 |---|---|---|
 | `?slug` | `?attempt4` | Matches against the title in `run.txt` |
 | `?admin=true` | `?attempt4&admin=true` | Shows swap simulation buttons |
-| `?shiny=true` | `?attempt4&shiny=true` | Shows shiny sprites |
+| `?shiny=true` | `?attempt4&shiny=true` | Shows shiny sprites (global) |
 | `?female=true` | `?attempt4&female=true` | Shows female sprites |
+| `?art=home` | `?attempt4&art=home` | Uses PokeAPI "home" artwork instead of "official-artwork" (default) |
 
 ## 📄 License
 

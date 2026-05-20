@@ -515,17 +515,47 @@
 
   <script>
     // ============================================================
-    //  URL PARAMETERS
+    //  Soul Link Overlay — OBS Browser Source
+    //  Reads pairing data from /run.txt and renders live.
+    //
+    //  @module overlay
+    //  @requires PokeAPI (external sprite/type lookups)
+    //  @note Designed for Chromium (OBS Embedded Browser)
     // ============================================================
+
+    // ============================================================
+    //  URL PARAMETERS
+    //  @section config
+    // ============================================================
+
+    /** @const {URLSearchParams} Parsed query string */
     const urlParams = new URLSearchParams(window.location.search);
-    // The query param is the slug itself (e.g. ?attempt4)
+
+    /**
+     * The slug from the URL query string (e.g. `?attempt4` → `"attempt4"`).
+     * Used to validate against the title line in run.txt.
+     * @const {string}
+     */
     const QUERY_SLUG = window.location.search.replace(/^\?/, '').trim();
+
+    /** @const {boolean} Show admin swap-simulation buttons */
     const IS_ADMIN = urlParams.get('admin') === 'true';
+
+    /** @const {boolean} Global shiny override for all sprites */
     const SHINY = urlParams.get('shiny') === 'true';
+
+    /** @const {boolean} Show female variant sprites */
     const FEMALE = urlParams.get('female') === 'true';
+
+    /**
+     * PokeAPI artwork variant: "official-artwork" (default) or "home".
+     * @const {'official-artwork'|'home'}
+     */
+    const ART_VARIANT = urlParams.get('art') === 'home' ? 'home' : 'official-artwork';
 
     // ============================================================
     //  DOM REFS
+    //  @section dom
     // ============================================================
     const overlayEl = document.getElementById('overlay');
     const statusDot = document.getElementById('statusDot');
@@ -539,13 +569,29 @@
     const adminButtons = document.getElementById('admin-buttons');
 
     // ============================================================
-    //  SPRITE URL BUILDER
+    //  SPRITE & TYPE LOOKUPS
+    //  @section sprites
     // ============================================================
-    const SPRITE_BASE =
-      'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork';
 
+    /**
+     * Base URL for PokeAPI official artwork sprites.
+     * Dynamically built from ART_VARIANT.
+     * @const {string}
+     */
+    const SPRITE_BASE =
+      `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/${ART_VARIANT}`;
+
+    /**
+     * Cache for dex ID lookups: speciesName → nationalDexId.
+     * @type {Object<string, number>}
+     */
     const dexCache = {};
 
+    /**
+     * Map of Pokémon type names to their hex colors.
+     * Used for the diagonal gradient on pair circles.
+     * @const {Object<string, string>}
+     */
     const TYPE_COLORS = {
       normal: '#A8A77A', fire: '#EE8130', water: '#6390F0',
       electric: '#F7D02C', grass: '#7AC74C', ice: '#96D9D6',
@@ -555,65 +601,159 @@
       dark: '#705746', steel: '#B7B7CE', fairy: '#D685AD',
     };
 
+    /**
+     * Cache for type lookups: speciesName → primaryTypeName.
+     * @type {Object<string, string>}
+     */
     const typeCache = {};
 
+    /**
+     * Parse a species name, detecting an optional "(Shiny)" suffix.
+     *
+     * @param {string} raw - Raw species string (e.g. "Piplup (Shiny)").
+     * @returns {{ cleanName: string, isShiny: boolean }}
+     *   - cleanName: lowercased species name with suffix stripped.
+     *   - isShiny: true if "(Shiny)" was found.
+     *
+     * @example
+     *   parseSpeciesName("Piplup (Shiny)") // → { cleanName: "piplup", isShiny: true }
+     *   parseSpeciesName("Piplup")         // → { cleanName: "piplup", isShiny: false }
+     *
+     * @note Only the first "(Shiny)" match is detected.
+     *   "Pikachu (Shiny) (Shiny)" → cleanName: "pikachu (shiny)", isShiny: true
+     */
+    function parseSpeciesName(raw) {
+      const trimmed = raw.trim();
+      const match = trimmed.match(/^(.+?)\s*\(Shiny\)\s*$/i);
+      if (match) {
+        return { cleanName: match[1].toLowerCase().trim(), isShiny: true };
+      }
+      return { cleanName: trimmed.toLowerCase().trim(), isShiny: false };
+    }
+
+    /**
+     * Fetch the primary type for a Pokémon species from PokeAPI.
+     * Results are cached in {@link typeCache}.
+     *
+     * @param {string} speciesName - Species name (may include "(Shiny)" suffix).
+     * @returns {Promise<string|null>} Primary type name (e.g. "water") or null on failure.
+     */
     async function getPrimaryType(speciesName) {
-      const name = speciesName.toLowerCase().trim();
-      if (typeCache[name]) return typeCache[name];
+      const { cleanName } = parseSpeciesName(speciesName);
+      if (typeCache[cleanName]) return typeCache[cleanName];
       try {
-        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
+        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${cleanName}`);
         if (!res.ok) return null;
         const data = await res.json();
         const typeName = data.types?.[0]?.type?.name || null;
-        typeCache[name] = typeName;
+        typeCache[cleanName] = typeName;
         return typeName;
       } catch {
         return null;
       }
     }
 
+    /**
+     * Fetch the National Pokédex ID for a species from PokeAPI.
+     * Results are cached in {@link dexCache}.
+     *
+     * @param {string} speciesName - Species name (may include "(Shiny)" suffix).
+     * @returns {Promise<number|null>} Dex ID or null on failure.
+     */
     async function getDexId(speciesName) {
-      const name = speciesName.toLowerCase().trim();
-      if (dexCache[name]) return dexCache[name];
+      const { cleanName } = parseSpeciesName(speciesName);
+      if (dexCache[cleanName]) return dexCache[cleanName];
       try {
-        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
+        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${cleanName}`);
         if (!res.ok) return null;
         const data = await res.json();
-        dexCache[name] = data.id;
+        dexCache[cleanName] = data.id;
         return data.id;
       } catch {
         return null;
       }
     }
 
-    function buildSpriteUrl(dexId, shiny, female) {
+    /**
+     * Build a PokeAPI sprite URL for a given Pokémon.
+     *
+     * Shiny priority (highest to lowest):
+     *   1. perPokemonShiny (from "(Shiny)" suffix in run.txt)
+     *   2. global SHINY param (from URL ?shiny=true)
+     *
+     * @param {number|null} dexId - National Pokédex ID.
+     * @param {boolean} perPokemonShiny - Per-Pokémon shiny flag from parser.
+     * @param {boolean} female - Whether to request female variant.
+     * @returns {string|null} Full sprite URL, or null if dexId is falsy.
+     *
+     * @note For "home" artwork variant, female variants are not available
+     *   in the PokeAPI repository, so female is silently ignored.
+     */
+    function buildSpriteUrl(dexId, perPokemonShiny, female) {
       if (!dexId) return null;
+
+      const useShiny = perPokemonShiny || SHINY;
+      const useFemale = female && ART_VARIANT !== 'home';
+
       let path = `${SPRITE_BASE}/`;
-      if (shiny && female) path += `shiny/female/${dexId}.png`;
-      else if (shiny) path += `shiny/${dexId}.png`;
-      else if (female) path += `female/${dexId}.png`;
+      if (useShiny && useFemale) path += `shiny/female/${dexId}.png`;
+      else if (useShiny) path += `shiny/${dexId}.png`;
+      else if (useFemale) path += `female/${dexId}.png`;
       else path += `${dexId}.png`;
       return path;
     }
 
     // ============================================================
     //  RUN.TXT PARSER
+    //  @section parser
     // ============================================================
 
     /**
-     * Parse the run.txt format:
+     * Advance the line index past any blank lines.
      *
-     * Line 1: Title (e.g. "ATTEMPT 4") → slug = "attempt4"
-     * Blank lines are ignored.
-     * Lines starting with "- " are route headers.
-     *   If the route header ends with (DEAD) or (BOX), skip the entire pairing.
-     * The next non-blank line after a route header = nicknames (P1 & P2)
-     * The next non-blank line after that = species (P1 & P2)
+     * @param {string[]} lines - Array of raw text lines.
+     * @param {number} i - Current index (will be mutated).
+     * @returns {number} New index after skipping blanks, or lines.length if EOF.
+     * @private
+     */
+    function skipBlankLines(lines, i) {
+      while (i < lines.length && lines[i].trim() === '') i++;
+      return i;
+    }
+
+    /**
+     * Parse the run.txt format into structured pairing data.
+     *
+     * Expected format:
+     * ```
+     * ATTEMPT 4
+     *
+     * - Route 201
+     * Nightfall & Nightfall
+     * Piplup & Piplup
+     *
+     * - Route 202 (DEAD)
+     * Biefstuk & Kipstuk
+     * Bidoof & Starly
+     * ```
+     *
+     * Rules:
+     * - Line 1: Title → slug (lowercased, spaces removed).
+     * - Lines starting with "- ": Route/pairing header.
+     *   - If header ends with `(DEAD)` or `(BOX)`, the entire pairing is skipped.
+     * - Next non-blank line: Nicknames (P1 & P2).
+     * - Next non-blank line: Species (P1 & P2).
+     *   - Species may end with `(Shiny)` to flag shiny sprite.
+     * - Blank lines are ignored.
+     *
+     * @param {string} text - Raw content of run.txt.
+     * @returns {{ title: string, slug: string, pairs: Array<Object> }}
+     *   Parsed data ready for rendering.
      */
     function parseRunTxt(text) {
       const lines = text.split('\n');
 
-      // Line 1 = title
+      // --- Line 1: Title ---
       const title = (lines[0] || '').trim();
       const slug = title.toLowerCase().replace(/\s+/g, '');
 
@@ -624,7 +764,7 @@
         const line = lines[i].trim();
 
         if (line.startsWith('- ')) {
-          // Route header
+          // --- Route header ---
           const routePart = line.slice(2).trim();
 
           // Check for skip markers
@@ -636,15 +776,13 @@
           routeName = routeName.replace(/\s*\(DEAD\)\s*$/i, '').trim();
           routeName = routeName.replace(/\s*\(BOX\)\s*$/i, '').trim();
 
-          // Find next non-blank line for nicknames
-          i++;
-          while (i < lines.length && lines[i].trim() === '') i++;
+          // --- Nicknames ---
+          i = skipBlankLines(lines, i + 1);
           if (i >= lines.length) break;
           const nicknameLine = lines[i].trim();
 
-          // Find next non-blank line for species
-          i++;
-          while (i < lines.length && lines[i].trim() === '') i++;
+          // --- Species ---
+          i = skipBlankLines(lines, i + 1);
           if (i >= lines.length) break;
           const speciesLine = lines[i].trim();
 
@@ -658,16 +796,31 @@
           const nick1 = nickParts[0] || '';
           const nick2 = nickParts[1] || '';
 
-          // Parse "Species1 & Species2"
+          // Parse "Species1 & Species2" with (Shiny) detection
           const specParts = speciesLine.split('&').map(s => s.trim());
-          const spec1 = specParts[0] || '';
-          const spec2 = specParts[1] || '';
+          const rawSpec1 = specParts[0] || '';
+          const rawSpec2 = specParts[1] || '';
+
+          const parsed1 = parseSpeciesName(rawSpec1);
+          const parsed2 = parseSpeciesName(rawSpec2);
 
           pairs.push({
             originKey: routeName.toLowerCase().replace(/\s+/g, '-'),
             routeName: routeName,
-            p1: { nickname: nick1, name: spec1, events: {} },
-            p2: { nickname: nick2, name: spec2, events: {} },
+            p1: {
+              nickname: nick1,
+              name: parsed1.cleanName,
+              rawName: rawSpec1,
+              shiny: parsed1.isShiny,
+              events: {},
+            },
+            p2: {
+              nickname: nick2,
+              name: parsed2.cleanName,
+              rawName: rawSpec2,
+              shiny: parsed2.isShiny,
+              events: {},
+            },
             swappedAt: null,
           });
         }
@@ -680,17 +833,80 @@
 
     // ============================================================
     //  FETCH & LOAD FROM RUN.TXT
+    //  @section loader
     // ============================================================
-    let lastPairsJson = ''; // for change detection
+
+    /**
+     * Timestamp of the last successful fetch (from Last-Modified header).
+     * Used for HTTP conditional requests.
+     * @type {string|null}
+     */
+    let lastModified = null;
+
+    /**
+     * Content-Length of the last successful fetch.
+     * Fallback change detector when Last-Modified is unavailable.
+     * @type {number|null}
+     */
+    let lastContentLength = null;
+
+    /**
+     * Cached JSON of the last rendered pairs for change detection.
+     * @type {string}
+     */
+    let lastPairsJson = '';
+
+    /** @type {number|null} setInterval ID for polling */
     let refreshInterval = null;
 
+    /**
+     * Polling interval in milliseconds.
+     * @const {number}
+     */
+    const POLL_INTERVAL_MS = 3000;
+
+    /**
+     * Fetch /run.txt and re-render if the content has changed.
+     *
+     * Uses HTTP conditional requests (If-Modified-Since) to avoid
+     * downloading the full body when the file hasn't changed.
+     * Falls back to Content-Length comparison if the server doesn't
+     * provide Last-Modified headers.
+     *
+     * @returns {Promise<void>}
+     */
     async function loadFromRunTxt() {
       try {
-        const res = await fetch('/run.txt');
+        // --- Conditional request: only download body if modified ---
+        const headers = {};
+        if (lastModified) {
+          headers['If-Modified-Since'] = lastModified;
+        }
+
+        const res = await fetch('/run.txt', { headers });
+
+        // 304 Not Modified → skip
+        if (res.status === 304) {
+          return;
+        }
+
         if (!res.ok) {
           showError(`Failed to load run.txt (HTTP ${res.status})`);
           return;
         }
+
+        // --- Update change-detection metadata ---
+        const serverLastModified = res.headers.get('Last-Modified');
+        const contentLength = parseInt(res.headers.get('Content-Length'), 10);
+
+        if (serverLastModified) {
+          lastModified = serverLastModified;
+        }
+
+        // If server sent Last-Modified AND Content-Length matches,
+        // we can skip the body entirely (belt-and-suspenders).
+        // But we still need the body for parsing, so we always read it.
+
         const text = await res.text();
 
         if (!text.trim()) {
@@ -698,24 +914,31 @@
           return;
         }
 
+        // --- Fallback change detection via Content-Length ---
+        if (!serverLastModified && contentLength && contentLength === lastContentLength) {
+          // Same size, likely unchanged — skip re-render
+          return;
+        }
+        lastContentLength = contentLength;
+
+        // --- Parse ---
         const parsed = parseRunTxt(text);
 
         // Validate slug against query param (if one was provided)
         if (QUERY_SLUG && QUERY_SLUG !== parsed.slug && !QUERY_SLUG.startsWith('run=')) {
-          // Show a warning but still render
           console.warn(`[Overlay] Query slug "${QUERY_SLUG}" doesn't match file title slug "${parsed.slug}"`);
         }
 
         // Update header
         runIdDisplay.textContent = parsed.title;
 
-        // Change detection: only re-render if data actually changed
+        // --- Content-based change detection (final safety net) ---
         const newJson = JSON.stringify(parsed.pairs);
-        if (newJson === lastPairsJson) return; // no change
+        if (newJson === lastPairsJson) return;
 
         lastPairsJson = newJson;
 
-        // Render
+        // --- Render ---
         await renderPairs(parsed.pairs);
         setupAdminPanel(parsed.pairs);
 
@@ -789,9 +1012,9 @@
         routeEl.textContent = pair.routeName;
         circle.appendChild(routeEl);
 
-        // Sprite 1 (player 1)
+        // Sprite 1 (player 1) — per-Pokémon shiny takes priority over global SHINY param
         if (pair.p1) {
-          const spriteUrl1 = buildSpriteUrl(dexId1, SHINY, FEMALE);
+          const spriteUrl1 = buildSpriteUrl(dexId1, pair.p1.shiny, FEMALE);
           if (spriteUrl1) {
             const img1 = document.createElement('img');
             img1.className = 'circle-sprite p1';
@@ -803,9 +1026,9 @@
           }
         }
 
-        // Sprite 2 (player 2)
+        // Sprite 2 (player 2) — per-Pokémon shiny takes priority over global SHINY param
         if (pair.p2) {
-          const spriteUrl2 = buildSpriteUrl(dexId2, SHINY, FEMALE);
+          const spriteUrl2 = buildSpriteUrl(dexId2, pair.p2.shiny, FEMALE);
           if (spriteUrl2) {
             const img2 = document.createElement('img');
             img2.className = 'circle-sprite p2';
