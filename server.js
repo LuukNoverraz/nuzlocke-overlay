@@ -2,7 +2,7 @@
  * Soul Link Overlay — Minimal Static File Server
  * ===============================================
  *
- * Serves the overlay HTML, run.txt data, and FLURO fonts
+ * Serves the overlay HTML, run.yaml data, and FLURO fonts
  * from the `public/` directory. No dependencies required.
  *
  * Usage:
@@ -55,7 +55,7 @@ const MIME_TYPES = {
  * Routes:
  *   GET /              → 302 redirect to /overlay.html
  *   GET /overlay.html  → serves public/overlay.html
- *   GET /run.txt       → serves public/run.txt
+ *   GET /run.yaml      → serves public/run.yaml
  *   GET /fonts/*       → serves public/fonts/*
  *   GET /*             → serves public/* (generic fallback)
  *
@@ -134,6 +134,6 @@ server.listen(PORT, () => {
   console.log(`\n  🎮 Soul Link Overlay Server`);
   console.log(`  ─────────────────────────`);
   console.log(`  Local:   http://localhost:${PORT}/overlay.html`);
-  console.log(`  Data:    http://localhost:${PORT}/run.txt`);
-  console.log(`\n  Edit public/run.txt and the overlay auto-updates.\n`);
+  console.log(`  Data:    http://localhost:${PORT}/run.yaml`);
+  console.log(`\n  Edit public/run.yaml and the overlay auto-updates.\n`);
 });

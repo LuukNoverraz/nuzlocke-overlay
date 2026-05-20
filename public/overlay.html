@@ -77,62 +77,6 @@
     }
 
     /* ============================================================
-       HEADER — minimal, transparent
-       ============================================================ */
-    #header {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 4px 0 8px 0;
-      flex-shrink: 0;
-      pointer-events: auto;
-    }
-
-    #header .status-dot {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #4ade80;
-      box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
-      animation: pulse-dot 2s ease-in-out infinite;
-    }
-
-    #header .status-dot.error {
-      background: #f87171;
-      box-shadow: 0 0 6px rgba(248, 113, 113, 0.5);
-    }
-
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%      { opacity: 0.5; transform: scale(0.85); }
-    }
-
-    #header .title-group {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    #header h1 {
-      font-family: 'FLURO', sans-serif;
-      font-weight: bold;
-      font-size: 0.85rem;
-      letter-spacing: 0.12em;
-      color: rgba(255, 255, 255, 0.7);
-      text-shadow: 0 0 12px rgba(255, 255, 255, 0.08);
-    }
-
-    #header .run-id {
-      font-family: 'FLURO', sans-serif;
-      font-weight: 300;
-      font-size: 0.6rem;
-      color: rgba(255, 255, 255, 0.25);
-      letter-spacing: 0.05em;
-    }
-
-    /* ============================================================
        PAIRS ROW — horizontal scroll of circles
        ============================================================ */
     #pairs-container {
@@ -142,6 +86,7 @@
       overflow-y: hidden;
       padding-top: 2em;
       padding-bottom: 2em;
+      margin-bottom: -32px;
       display: flex;
       flex-direction: row;
       justify-content: center;
@@ -220,13 +165,6 @@
 
     .pair-circle.dead:hover {
       border-color: rgba(248, 113, 113, 0.25);
-    }
-
-    /* ============================================================
-       ROUTE NAME inside circle
-       ============================================================ */
-    .pair-route {
-      display: none;
     }
 
     /* ============================================================
@@ -515,15 +453,6 @@
        ============================================================ -->
   <div id="overlay" class="hidden">
 
-    <!-- Header -->
-    <div id="header">
-      <span class="status-dot" id="statusDot"></span>
-      <div class="title-group">
-        <h1>SOUL LINK</h1>
-        <span class="run-id" id="runIdDisplay"></span>
-      </div>
-    </div>
-
     <!-- Loading State -->
     <div id="loading" class="active">
       <div class="loading-spinner"></div>
@@ -539,7 +468,7 @@
     <!-- Empty State -->
     <div id="empty">
       <div>No Soul Link pairs yet</div>
-      <div style="font-size:0.55rem;margin-top:4px;opacity:0.5;">Add pairings to run.txt to get started!</div>
+      <div style="font-size:0.55rem;margin-top:4px;opacity:0.5;">Add pairings to run.yaml to get started!</div>
     </div>
 
     <!-- Pairs Row (horizontal circles) -->
@@ -556,7 +485,7 @@
   <script>
     // ============================================================
     //  Soul Link Overlay — OBS Browser Source
-    //  Reads pairing data from /run.txt and renders live.
+    //  Reads pairing data from /run.yaml and renders live.
     //
     //  @module overlay
     //  @requires PokeAPI (external sprite/type lookups)
@@ -573,7 +502,7 @@
 
     /**
      * The slug from the URL query string (e.g. `?attempt4` → `"attempt4"`).
-     * Used to validate against the title line in run.txt.
+     * Used to validate against the title line in run.yaml.
      * @const {string}
      */
     const QUERY_SLUG = window.location.search.replace(/^\?/, '').trim();
@@ -633,8 +562,6 @@
     //  @section dom
     // ============================================================
     const overlayEl = document.getElementById('overlay');
-    const statusDot = document.getElementById('statusDot');
-    const runIdDisplay = document.getElementById('runIdDisplay');
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
     const errorMessage = document.getElementById('errorMessage');
@@ -762,7 +689,7 @@
      * Build a PokeAPI sprite URL for a given Pokémon.
      *
      * Shiny priority (highest to lowest):
-     *   1. perPokemonShiny (from "(Shiny)" suffix in run.txt)
+     *   1. perPokemonShiny (from "(Shiny)" suffix in run.yaml)
      *   2. global SHINY param (from URL ?shiny=true)
      *
      * @param {number|null} dexId - National Pokédex ID.
@@ -788,7 +715,7 @@
     }
 
     // ============================================================
-    //  RUN.TXT PARSER
+    //  RUN.YAML PARSER
     //  @section parser
     // ============================================================
 
@@ -806,7 +733,13 @@
     }
 
     /**
-     * Parse the run.txt format into structured pairing data.
+     * Parse the .yaml format into structured pairing data.
+     *
+     * The `.yaml` file format is identical to the original `.txt` format
+     * but adds support for comment lines. Lines starting with `#` are
+     * stripped before parsing, allowing streamers to comment out dead
+     * pairs, add notes, or temporarily disable routes without deleting
+     * them from the file.
      *
      * Supports two modes, auto-detected per route:
      *
@@ -833,7 +766,7 @@
      *   - Species may end with `(Shiny)` to flag shiny sprite.
      * - Blank lines are ignored.
      *
-     * @param {string} text - Raw content of run.txt.
+     * @param {string} text - Raw content of run.yaml.
      * @returns {{ title: string, slug: string, pairs: Array<Object> }}
      *   Parsed data ready for rendering.
      *   Each pair object has:
@@ -842,7 +775,11 @@
      *   - `p2` {Object|null} — null in solo mode, populated in Soul Link mode
      */
     function parseRunTxt(text) {
-      const lines = text.split('\n');
+      // Strip comment lines (lines starting with #) before parsing.
+      // This allows streamers to comment out dead pairs, add notes,
+      // or temporarily disable routes without deleting them.
+      const rawLines = text.split('\n');
+      const lines = rawLines.filter(line => !line.trim().startsWith('#'));
 
       // --- Line 1: Title ---
       const title = (lines[0] || '').trim();
@@ -952,7 +889,7 @@
     }
 
     // ============================================================
-    //  FETCH & LOAD FROM RUN.TXT
+    //  FETCH & LOAD FROM RUN.YAML
     //  @section loader
     // ============================================================
 
@@ -986,7 +923,7 @@
     const POLL_INTERVAL_MS = 3000;
 
     /**
-     * Fetch /run.txt and re-render if the content has changed.
+     * Fetch /run.yaml and re-render if the content has changed.
      *
      * Uses HTTP conditional requests (If-Modified-Since) to avoid
      * downloading the full body when the file hasn't changed.
@@ -1003,7 +940,7 @@
           headers['If-Modified-Since'] = lastModified;
         }
 
-        const res = await fetch('/run.txt', { headers });
+        const res = await fetch('/run.yaml', { headers });
 
         // 304 Not Modified → skip
         if (res.status === 304) {
@@ -1011,7 +948,7 @@
         }
 
         if (!res.ok) {
-          showError(`Failed to load run.txt (HTTP ${res.status})`);
+          showError(`Failed to load run.yaml (HTTP ${res.status})`);
           return;
         }
 
@@ -1030,7 +967,7 @@
         const text = await res.text();
 
         if (!text.trim()) {
-          showError('run.txt is empty');
+          showError('run.yaml is empty');
           return;
         }
 
@@ -1049,9 +986,6 @@
           console.warn(`[Overlay] Query slug "${QUERY_SLUG}" doesn't match file title slug "${parsed.slug}"`);
         }
 
-        // Update header
-        runIdDisplay.textContent = parsed.title;
-
         // --- Content-based change detection (final safety net) ---
         const newJson = JSON.stringify(parsed.pairs);
         if (newJson === lastPairsJson) return;
@@ -1069,11 +1003,9 @@
           pairsContainer.style.display = 'flex';
         }
 
-        statusDot.className = 'status-dot';
-
       } catch (err) {
-        console.error('[Overlay] Error loading run.txt:', err);
-        showError(err.message || 'Failed to load run.txt');
+        console.error('[Overlay] Error loading run.yaml:', err);
+        showError(err.message || 'Failed to load run.yaml');
       }
     }
 
@@ -1159,12 +1091,6 @@
           )
         `;
 
-        // Route name (hidden, used for data)
-        const routeEl = document.createElement('span');
-        routeEl.className = 'pair-route';
-        routeEl.textContent = pair.routeName;
-        circle.appendChild(routeEl);
-
         // ── Sprites ──
         // Solo mode: single sprite, centered, larger (class .solo).
         // Soul Link: two sprites offset diagonally (classes .p1 / .p2).
@@ -1223,6 +1149,15 @@
 
         pairsContainer.appendChild(circle);
       });
+
+      // ── Dynamic scale based on pair count ──
+      // If there are 6+ circles, shrink the scale from 1.5 to 1.25
+      // to reduce the horizontal footprint and prevent overflow.
+      // The CSS default is scale(1.5); we override it inline here.
+      const circleCount = pairsContainer.querySelectorAll('.pair-circle').length;
+      pairsContainer.style.transform = circleCount >= 6
+        ? 'scale(1.25) translate(0px, -4em)'
+        : 'scale(1.5) translate(0px, -4em)';
     }
 
     // ============================================================
@@ -1281,7 +1216,6 @@
       emptyEl.classList.remove('active');
       pairsContainer.style.display = 'none';
       errorMessage.textContent = msg || 'Unknown error';
-      statusDot.className = 'status-dot error';
     }
 
     function showEmpty() {
@@ -1354,8 +1288,6 @@
         const style = document.createElement('style');
         style.textContent = `
           body,
-          #header h1,
-          #header .run-id,
           .pair-name-primary,
           .pair-name-secondary,
           .pair-name-solo,

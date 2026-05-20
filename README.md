@@ -2,7 +2,7 @@
 
 A **standalone OBS Browser Source** for displaying live **Soul Link Nuzlocke** (two players, linked pairs) or **Solo Nuzlocke** (single player) pairings during a Twitch stream.
 
-Reads pairing data from `public/run.txt` and renders it as a transparent overlay with Pokémon sprites, type-colored circles, and auto-refresh.
+Reads pairing data from `public/run.yaml` and renders it as a transparent overlay with Pokémon sprites, type-colored circles, and auto-refresh.
 
 ## Quick Start
 
@@ -18,13 +18,13 @@ http://localhost:3000/overlay.html?attempt4
 
 ## How It Works
 
-### 1. Edit `public/run.txt`
+### 1. Edit `public/run.yaml`
 
 The overlay supports **two modes**, auto-detected per route:
 
 #### Soul Link Mode (two Pokémon per route)
 
-```
+```yaml
 ATTEMPT 4
 
 - Route 201
@@ -42,7 +42,7 @@ Starly & Bidoof
 
 #### Solo Nuzlocke Mode (one Pokémon per route)
 
-```
+```yaml
 ATTEMPT 4
 
 - Route 201
@@ -68,6 +68,19 @@ Starly
 - **`(Shiny)`** after a species → shows shiny sprite for that Pokémon
 - Blank lines are ignored
 
+**Comments:** Lines starting with `#` are ignored. Use them to comment out dead pairs, add notes, or temporarily disable routes:
+
+```yaml
+# This route is dead, keeping for reference
+- Route 202 (DEAD)
+Biefstuk & Kipstuk
+Bidoof & Starly
+
+# TODO: add Route 204 after we get there
+```
+
+Since the file uses the `.yaml` extension, VS Code natively recognizes it and **`Ctrl + /`** will automatically insert `#` for commenting.
+
 **Mixed mode:** You can mix Soul Link and Solo routes in the same file. Each route is auto-detected independently.
 
 ### 2. Open in OBS
@@ -83,13 +96,13 @@ Add a **Browser** source with:
 
 ### 3. Edit Live
 
-Save `public/run.txt` — the overlay auto-updates within 3 seconds.
+Save `public/run.yaml` — the overlay auto-updates within 3 seconds.
 
 ## URL Parameters
 
 | Param | Example | Effect |
 |---|---|---|
-| `?slug` | `?attempt4` | Matches against the title in `run.txt` |
+| `?slug` | `?attempt4` | Matches against the title in `run.yaml` |
 | `?admin=true` | `?attempt4&admin=true` | Shows swap simulation buttons (Soul Link pairs only) |
 | `?shiny=true` | `?attempt4&shiny=true` | Global shiny override for all sprites |
 | `?female=true` | `?attempt4&female=true` | Shows female variant sprites |
@@ -115,7 +128,7 @@ The font is loaded dynamically via the Google Fonts CSS2 API. FLURO is always ke
 soullocke/
 ├── public/
 │   ├── overlay.html     ← The overlay (OBS Browser Source)
-│   ├── run.txt          ← Your pairing data (edit this)
+│   ├── run.yaml         ← Your pairing data (edit this)
 │   └── fonts/           ← FLURO font files
 ├── server.js            ← Static file server (Node.js, zero deps)
 ├── package.json         ← Just "start": "node server.js"
@@ -131,4 +144,4 @@ soullocke/
 
 **Modifications** Copyright (c) 2025 Luuk Noverraz
 
-This project is a fork of the original [soullocke](https://github.com/jynnie/soullocke) by Jessica Tang, stripped down to a standalone overlay and extended with solo Nuzlocke support, swap simulation, Google Font customization, and OBS-optimized rendering.
+This project is a fork of the original [soullocke](https://github.com/jynnie/soullocke) by Jessica Tang, stripped down to a standalone overlay and extended with solo Nuzlocke support, swap simulation, Google Font customization, `.yaml` file format with comment support, and OBS-optimized rendering.
