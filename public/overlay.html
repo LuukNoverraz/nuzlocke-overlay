@@ -258,7 +258,7 @@
     .pair-name-secondary {
       font-family: 'FLURO', sans-serif;
       font-weight: 600;
-      font-size: 0.8em;
+      font-size: 1em;
       color: #f0f4f8;
       letter-spacing: 0.03em;
       text-align: center;
@@ -279,7 +279,7 @@
     }
 
     /* ============================================================
-       SPRITES inside circle — stacked diagonally
+       SPRITES inside circle — stacked diagonally (Soul Link)
        ============================================================ */
     .circle-sprite {
       position: absolute;
@@ -308,6 +308,46 @@
 
     .circle-sprite.dead {
       filter: grayscale(1) brightness(0.35);
+    }
+
+    /* ============================================================
+       SPRITES — Solo Nuzlocke (single Pokémon, centered, larger)
+       Applied when a route has only one Pokémon (no "&" in species).
+       ============================================================ */
+    .circle-sprite.solo {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 10em;
+      height: 10em;
+      z-index: 1;
+    }
+
+    /* ============================================================
+       NAMES — Solo Nuzlocke (single name, centered at bottom)
+       ============================================================ */
+    .pair-name-solo {
+      font-family: 'FLURO', sans-serif;
+      font-weight: 600;
+      font-size: 1em;
+      color: #f0f4f8;
+      letter-spacing: 0.03em;
+      text-align: center;
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      z-index: 3;
+      text-shadow:
+        0 0 8px rgba(255, 255, 255, 0.25),
+        0 0 20px rgba(255, 255, 255, 0.08),
+        0 1px 4px rgba(0, 0, 0, 1);
+    }
+
+    .pair-name-solo.dead {
+      color: rgba(248, 113, 113, 0.7);
     }
 
     /* ============================================================
@@ -602,8 +642,8 @@
     };
 
     /**
-     * Cache for type lookups: speciesName → primaryTypeName.
-     * @type {Object<string, string>}
+     * Cache for type lookups: speciesName → [primaryType, secondaryType|null].
+     * @type {Object<string, [string|null, string|null]>}
      */
     const typeCache = {};
 
@@ -632,24 +672,33 @@
     }
 
     /**
-     * Fetch the primary type for a Pokémon species from PokeAPI.
-     * Results are cached in {@link typeCache}.
+     * Fetch both primary and secondary types for a Pokémon species from PokeAPI.
+     * Results are cached in {@link typeCache} as [primary, secondary|null].
+     *
+     * For solo Nuzlocke mode, the primary type is used as `c1` and the secondary
+     * type (or primary if mono-type) is used as `c2` in the diagonal gradient,
+     * giving the same visual treatment as Soul Link pairs.
      *
      * @param {string} speciesName - Species name (may include "(Shiny)" suffix).
-     * @returns {Promise<string|null>} Primary type name (e.g. "water") or null on failure.
+     * @returns {Promise<[string|null, string|null]>}
+     *   Tuple of [primaryTypeName, secondaryTypeName|null].
+     *   - primaryTypeName: e.g. "water" — the first type slot.
+     *   - secondaryTypeName: e.g. "flying" — the second type slot, or null if mono-type.
      */
-    async function getPrimaryType(speciesName) {
+    async function getPokemonTypes(speciesName) {
       const { cleanName } = parseSpeciesName(speciesName);
       if (typeCache[cleanName]) return typeCache[cleanName];
       try {
         const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${cleanName}`);
-        if (!res.ok) return null;
+        if (!res.ok) return [null, null];
         const data = await res.json();
-        const typeName = data.types?.[0]?.type?.name || null;
-        typeCache[cleanName] = typeName;
-        return typeName;
+        const primary = data.types?.[0]?.type?.name || null;
+        const secondary = data.types?.[1]?.type?.name || null;
+        const result = [primary, secondary];
+        typeCache[cleanName] = result;
+        return result;
       } catch {
-        return null;
+        return [null, null];
       }
     }
 
@@ -724,31 +773,38 @@
     /**
      * Parse the run.txt format into structured pairing data.
      *
-     * Expected format:
+     * Supports two modes, auto-detected per route:
+     *
+     * **Soul Link** (two Pokémon per route — species line contains `&`):
      * ```
-     * ATTEMPT 4
-     *
      * - Route 201
-     * Nightfall & Nightfall
+     * Nightfall & Daybreak
      * Piplup & Piplup
+     * ```
      *
-     * - Route 202 (DEAD)
-     * Biefstuk & Kipstuk
-     * Bidoof & Starly
+     * **Solo Nuzlocke** (one Pokémon per route — species line has NO `&`):
+     * ```
+     * - Route 201
+     * Nightfall
+     * Piplup (Shiny)
      * ```
      *
      * Rules:
      * - Line 1: Title → slug (lowercased, spaces removed).
      * - Lines starting with "- ": Route/pairing header.
      *   - If header ends with `(DEAD)` or `(BOX)`, the entire pairing is skipped.
-     * - Next non-blank line: Nicknames (P1 & P2).
-     * - Next non-blank line: Species (P1 & P2).
+     * - Next non-blank line: Nicknames (P1 & P2 for Soul Link, or single for Solo).
+     * - Next non-blank line: Species (P1 & P2 for Soul Link, or single for Solo).
      *   - Species may end with `(Shiny)` to flag shiny sprite.
      * - Blank lines are ignored.
      *
      * @param {string} text - Raw content of run.txt.
      * @returns {{ title: string, slug: string, pairs: Array<Object> }}
      *   Parsed data ready for rendering.
+     *   Each pair object has:
+     *   - `isSolo` {boolean} — true if this route has only one Pokémon
+     *   - `p1` {Object} — always populated (the single Pokémon in solo mode)
+     *   - `p2` {Object|null} — null in solo mode, populated in Soul Link mode
      */
     function parseRunTxt(text) {
       const lines = text.split('\n');
@@ -791,38 +847,67 @@
             continue;
           }
 
-          // Parse "Nick1 & Nick2"
-          const nickParts = nicknameLine.split('&').map(s => s.trim());
-          const nick1 = nickParts[0] || '';
-          const nick2 = nickParts[1] || '';
+          // --- Auto-detect mode from species line ---
+          // If the species line contains "&", it's a Soul Link pair (two Pokémon).
+          // Otherwise, it's a Solo Nuzlocke (one Pokémon).
+          const isSolo = !speciesLine.includes('&');
 
-          // Parse "Species1 & Species2" with (Shiny) detection
-          const specParts = speciesLine.split('&').map(s => s.trim());
-          const rawSpec1 = specParts[0] || '';
-          const rawSpec2 = specParts[1] || '';
+          if (isSolo) {
+            // ── Solo Nuzlocke mode ──
+            // Single nickname, single species.
+            const nickname = nicknameLine.trim();
+            const parsed = parseSpeciesName(speciesLine);
 
-          const parsed1 = parseSpeciesName(rawSpec1);
-          const parsed2 = parseSpeciesName(rawSpec2);
+            pairs.push({
+              originKey: routeName.toLowerCase().replace(/\s+/g, '-'),
+              routeName: routeName,
+              isSolo: true,
+              p1: {
+                nickname: nickname,
+                name: parsed.cleanName,
+                rawName: speciesLine.trim(),
+                shiny: parsed.isShiny,
+                events: {},
+              },
+              p2: null, // No second Pokémon in solo mode
+              swappedAt: null,
+            });
+          } else {
+            // ── Soul Link mode (two Pokémon) ──
+            // Parse "Nick1 & Nick2"
+            const nickParts = nicknameLine.split('&').map(s => s.trim());
+            const nick1 = nickParts[0] || '';
+            const nick2 = nickParts[1] || '';
 
-          pairs.push({
-            originKey: routeName.toLowerCase().replace(/\s+/g, '-'),
-            routeName: routeName,
-            p1: {
-              nickname: nick1,
-              name: parsed1.cleanName,
-              rawName: rawSpec1,
-              shiny: parsed1.isShiny,
-              events: {},
-            },
-            p2: {
-              nickname: nick2,
-              name: parsed2.cleanName,
-              rawName: rawSpec2,
-              shiny: parsed2.isShiny,
-              events: {},
-            },
-            swappedAt: null,
-          });
+            // Parse "Species1 & Species2" with (Shiny) detection
+            const specParts = speciesLine.split('&').map(s => s.trim());
+            const rawSpec1 = specParts[0] || '';
+            const rawSpec2 = specParts[1] || '';
+
+            const parsed1 = parseSpeciesName(rawSpec1);
+            const parsed2 = parseSpeciesName(rawSpec2);
+
+            pairs.push({
+              originKey: routeName.toLowerCase().replace(/\s+/g, '-'),
+              routeName: routeName,
+              isSolo: false,
+              p1: {
+                nickname: nick1,
+                name: parsed1.cleanName,
+                rawName: rawSpec1,
+                shiny: parsed1.isShiny,
+                events: {},
+              },
+              p2: {
+                nickname: nick2,
+                name: parsed2.cleanName,
+                rawName: rawSpec2,
+                shiny: parsed2.isShiny,
+                events: {},
+              },
+              swappedAt: null,
+            });
+          }
         }
 
         i++;
@@ -959,12 +1044,18 @@
 
     // ============================================================
     //  RENDER — horizontal circles
+    //  Supports both Soul Link (two Pokémon) and Solo Nuzlocke
+    //  (one Pokémon) modes, auto-detected per route.
     // ============================================================
     async function renderPairs(pairs) {
       pairsContainer.innerHTML = '';
       if (pairs.length === 0) return;
 
-      // Batch resolve dex IDs and type colors
+      // Batch resolve dex IDs and type colors.
+      // For each Pokémon we fetch [primaryType, secondaryType] so that
+      // solo Nuzlocke circles can use the same diagonal gradient as
+      // Soul Link circles (primary → secondary, or primary → primary
+      // if the Pokémon is mono-type).
       const dexPromises = [];
       const typePromises = [];
       for (const pair of pairs) {
@@ -972,29 +1063,56 @@
         const name2 = pair.p2 ? pair.p2.name : null;
         dexPromises.push(name1 ? getDexId(name1) : Promise.resolve(null));
         dexPromises.push(name2 ? getDexId(name2) : Promise.resolve(null));
-        typePromises.push(name1 ? getPrimaryType(name1) : Promise.resolve(null));
-        typePromises.push(name2 ? getPrimaryType(name2) : Promise.resolve(null));
+        // getPokemonTypes returns [primaryType, secondaryType|null]
+        typePromises.push(name1 ? getPokemonTypes(name1) : Promise.resolve([null, null]));
+        typePromises.push(name2 ? getPokemonTypes(name2) : Promise.resolve([null, null]));
       }
       const dexIds = await Promise.all(dexPromises);
-      const typeNames = await Promise.all(typePromises);
+      const typeResults = await Promise.all(typePromises);
 
       pairs.forEach((pair, idx) => {
         const dexId1 = dexIds[idx * 2];
         const dexId2 = dexIds[idx * 2 + 1];
-        const type1 = typeNames[idx * 2];
-        const type2 = typeNames[idx * 2 + 1];
+        // typeResults[idx*2] = [primary1, secondary1], typeResults[idx*2+1] = [primary2, secondary2]
+        const types1 = typeResults[idx * 2];
+        const types2 = typeResults[idx * 2 + 1];
 
         const isSwapped = !!pair.swappedAt;
+        const isSolo = pair.isSolo;
 
         // Build the circle
         const circle = document.createElement('div');
         circle.className = 'pair-circle';
         if (isSwapped) circle.classList.add('swapped');
+        if (isSolo) circle.classList.add('solo');
         circle.dataset.origin = pair.originKey;
 
-        // Apply type-colored diagonal gradient
-        const c1 = TYPE_COLORS[type1] || 'rgba(255,255,255,0.08)';
-        const c2 = TYPE_COLORS[type2] || 'rgba(255,255,255,0.08)';
+        // ── Type-colored background ──
+        // Both Soul Link and Solo Nuzlocke use the same diagonal split
+        // gradient. The difference is which types feed into c1 and c2:
+        //
+        // Soul Link: c1 = Player 1's primary type, c2 = Player 2's primary type.
+        // Solo:      c1 = the single Pokémon's primary type,
+        //            c2 = the single Pokémon's secondary type (or primary if mono-type).
+        //
+        // This gives solo circles the same polished diagonal look as pairs.
+        let c1, c2;
+
+        if (isSolo) {
+          // Solo Nuzlocke: use primary → secondary (or primary → primary if mono-type)
+          const primary = types1?.[0] || null;
+          const secondary = types1?.[1] || primary; // fallback to primary if mono-type
+          c1 = TYPE_COLORS[primary] || 'rgba(255,255,255,0.08)';
+          c2 = TYPE_COLORS[secondary] || 'rgba(255,255,255,0.08)';
+        } else {
+          // Soul Link: use Player 1's primary → Player 2's primary
+          const type1 = types1?.[0] || null;
+          const type2 = types2?.[0] || null;
+          c1 = TYPE_COLORS[type1] || 'rgba(255,255,255,0.08)';
+          c2 = TYPE_COLORS[type2] || 'rgba(255,255,255,0.08)';
+        }
+
+        // Same diagonal gradient for both modes — no special CSS needed.
         circle.style.background = `
           linear-gradient(135deg,
             rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 50%,
@@ -1012,12 +1130,14 @@
         routeEl.textContent = pair.routeName;
         circle.appendChild(routeEl);
 
-        // Sprite 1 (player 1) — per-Pokémon shiny takes priority over global SHINY param
+        // ── Sprites ──
+        // Solo mode: single sprite, centered, larger (class .solo).
+        // Soul Link: two sprites offset diagonally (classes .p1 / .p2).
         if (pair.p1) {
           const spriteUrl1 = buildSpriteUrl(dexId1, pair.p1.shiny, FEMALE);
           if (spriteUrl1) {
             const img1 = document.createElement('img');
-            img1.className = 'circle-sprite p1';
+            img1.className = isSolo ? 'circle-sprite solo' : 'circle-sprite p1';
             img1.src = spriteUrl1;
             img1.alt = pair.p1.name || 'pokemon';
             img1.loading = 'lazy';
@@ -1026,8 +1146,8 @@
           }
         }
 
-        // Sprite 2 (player 2) — per-Pokémon shiny takes priority over global SHINY param
-        if (pair.p2) {
+        // Sprite 2 (player 2) — only in Soul Link mode
+        if (pair.p2 && !isSolo) {
           const spriteUrl2 = buildSpriteUrl(dexId2, pair.p2.shiny, FEMALE);
           if (spriteUrl2) {
             const img2 = document.createElement('img');
@@ -1040,20 +1160,31 @@
           }
         }
 
-        // Names
+        // ── Names ──
         const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-        const name1 = pair.p1 ? cap(pair.p1.nickname || pair.p1.name || '?') : '—';
-        const name2 = pair.p2 ? cap(pair.p2.nickname || pair.p2.name || '?') : '—';
 
-        const primaryName = document.createElement('span');
-        primaryName.className = 'pair-name-primary';
-        primaryName.textContent = name1;
-        circle.appendChild(primaryName);
+        if (isSolo) {
+          // Solo mode: single name, centered at bottom (class .pair-name-solo)
+          const name = pair.p1 ? cap(pair.p1.nickname || pair.p1.name || '?') : '?';
+          const nameEl = document.createElement('span');
+          nameEl.className = 'pair-name-solo';
+          nameEl.textContent = name;
+          circle.appendChild(nameEl);
+        } else {
+          // Soul Link mode: two names, top & bottom (classes .pair-name-primary / .pair-name-secondary)
+          const name1 = pair.p1 ? cap(pair.p1.nickname || pair.p1.name || '?') : '—';
+          const name2 = pair.p2 ? cap(pair.p2.nickname || pair.p2.name || '?') : '—';
 
-        const secondaryName = document.createElement('span');
-        secondaryName.className = 'pair-name-secondary';
-        secondaryName.textContent = `& ${name2}`;
-        circle.appendChild(secondaryName);
+          const primaryName = document.createElement('span');
+          primaryName.className = 'pair-name-primary';
+          primaryName.textContent = name1;
+          circle.appendChild(primaryName);
+
+          const secondaryName = document.createElement('span');
+          secondaryName.className = 'pair-name-secondary';
+          secondaryName.textContent = `& ${name2}`;
+          circle.appendChild(secondaryName);
+        }
 
         pairsContainer.appendChild(circle);
       });
@@ -1061,6 +1192,8 @@
 
     // ============================================================
     //  ADMIN PANEL
+    //  Shows swap-simulation buttons for Soul Link pairs only.
+    //  Solo Nuzlocke pairs are excluded (swapping is meaningless).
     // ============================================================
     function setupAdminPanel(pairs) {
       if (!IS_ADMIN) {
@@ -1071,6 +1204,9 @@
       adminButtons.innerHTML = '';
 
       for (const pair of pairs) {
+        // Skip solo pairs — swapping doesn't apply to single-Pokémon routes
+        if (pair.isSolo) continue;
+
         const btn = document.createElement('button');
         btn.className = 'admin-swap-btn';
         btn.textContent = `⤾ ${pair.routeName}`;
