@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-  A <strong>standalone OBS Browser Source</strong> for displaying live <strong>Nuzlocke</strong> pairings.<br>
+  A <strong>lightweight, standalone OBS Browser Source</strong> for displaying live <strong>Nuzlocke</strong> pairings.<br>
   Supports <strong>Solo Nuzlocke</strong> (single player) and <strong>Soul Link</strong> (two players, linked pairs) runs.
 </p>
 
@@ -151,7 +151,34 @@ Add a **Browser** source with:
 | `?female=true` | `?female=true` | Shows female variant sprites |
 | `?art=home` | `?art=home` | Uses PokeAPI "home" artwork instead of "official-artwork" |
 | `?font=FontName` | `?font=Press+Start+2P` | Replace default font with any Google Font (spaces become `+`) |
+| `?gen=1-5` | `?gen=1-5` | Use Gen 1-5 type assignments (e.g. Clefairy shows Normal instead of Fairy) |
 | `?font-weight=...` | `?font=Rubik&font-weight=300;400;600;700` | Font weights to load (semicolon-separated, default `400;600;700`) |
+
+### Generation-Aware Typing
+
+Some Pokemon had their types changed in Generation 6 (e.g. Clefairy went from Normal to Fairy, Magnemite went from Electric to Electric/Steel). By default, the overlay uses **current (Gen 6+) typing** for the circle colors.
+
+To use **pre-Gen-6 typing** instead, add `?gen=1-5` to your overlay URL. The overlay will look up the `past_types` data from PokeAPI and use the type assignment from Generations 1-5.
+
+You can also select this from the **Typing** dropdown on the setup page (right of the "Load Example" button).
+
+### Pokemon Name Normalization
+
+The overlay automatically normalizes common name formats so you don't need to know PokeAPI's exact slug format:
+
+| You type | PokeAPI expects |
+|---|---|
+| `Mr. Mime` | `mr-mime` |
+| `Galarian Mr. Mime` | `mr-mime-galar` |
+| `Alolan Raichu` | `raichu-alola` |
+| `Hisuian Zorua` | `zorua-hisui` |
+| `Paldean Wooper` | `wooper-paldea` |
+| `Farfetch'd` | `farfetchd` |
+| `Flabébé` | `flabebe` |
+| `Type: Null` | `type-null` |
+| `Nidoran♀` | `nidoran-f` |
+
+Just type the name naturally -- the overlay handles the conversion.
 
 ### Font Customization
 

@@ -16,6 +16,16 @@
 
   <style>
     /* ============================================================
+       POKEMON DP PRO FONT
+       ============================================================ */
+    @font-face {
+      font-family: 'Pokemon DP Pro';
+      src: url('/fonts/pokemon-dp-pro.otf') format('opentype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    /* ============================================================
        CSS CUSTOM PROPERTIES - Light & Dark
        ============================================================ */
     :root {
@@ -109,9 +119,10 @@
     }
 
     header h1 {
-      font-weight: 700;
+      font-family: 'Pokemon DP Pro', 'Quicksand', sans-serif;
+      font-weight: normal;
       font-size: 2.2rem;
-      letter-spacing: -0.01em;
+      letter-spacing: 0.02em;
       color: var(--text);
       display: flex;
       align-items: center;
@@ -345,6 +356,47 @@
     .btn:disabled {
       opacity: 0.4;
       cursor: not-allowed;
+    }
+
+    /* ============================================================
+       TYPING SELECTOR (right-aligned in btn-row)
+       ============================================================ */
+    .typing-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .typing-selector label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .typing-selector select {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.8rem;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+      min-width: 100px;
+    }
+
+    .typing-selector select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+
+    .typing-selector select:hover {
+      border-color: var(--accent);
     }
 
     /* ============================================================
@@ -609,6 +661,13 @@ Starly & Bidoof"></textarea>
     <div class="btn-row">
       <button class="btn btn-danger" id="btn-clear" aria-label="Clear editor">Clear</button>
       <button class="btn btn-warning" id="btn-reset" aria-label="Load example data">Load Example</button>
+      <div class="typing-selector">
+        <label for="param-typing">Typing</label>
+        <select id="param-typing">
+          <option value="gen6">Gen 6+</option>
+          <option value="1-5">Gen 1-5</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -710,7 +769,16 @@ Piplup (Shiny)         <span class="comment-hint">shows shiny sprite</span></pre
         <strong>URL Parameters:</strong>
       </p>
       <pre><code>?font=FontName</code>   Load a Google Font (e.g. <code>?font=Press+Start+2P</code>)
-<code>?art=home</code>       Use Pokemon HOME HD sprites instead of default</pre>
+<code>?art=home</code>       Use Pokemon HOME HD sprites instead of default
+<code>?gen=1-5</code>       Use Gen 1-5 typing (e.g. Clefairy = Normal instead of Fairy)</pre>
+
+      <p class="step-desc" style="margin-top:12px;">
+        <strong>Name normalization:</strong> Type names naturally &mdash; the overlay handles the rest.
+      </p>
+      <pre><code>Mr. Mime</code>  →  <code>mr-mime</code>
+<code>Galarian Mr. Mime</code>  →  <code>mr-mime-galar</code>
+<code>Farfetch'd</code>  →  <code>farfetchd</code>
+<code>Type: Null</code>  →  <code>type-null</code></pre>
     </div>
   </div>
 
@@ -743,6 +811,7 @@ Piplup (Shiny)         <span class="comment-hint">shows shiny sprite</span></pre
   const themeToggle = document.getElementById('theme-toggle');
   const paramFont = document.getElementById('param-font');
   const paramHome = document.getElementById('param-home');
+  const paramTyping = document.getElementById('param-typing');
 
   // ============================================================
   //  CONSTANTS
@@ -866,6 +935,12 @@ Geodude & Psyduck`;
       parts.push('art=home');
     }
 
+    // Typing generation param
+    const typing = paramTyping.value;
+    if (typing !== 'gen6') {
+      parts.push(`gen=${typing}`);
+    }
+
     return parts.length > 0 ? '?' + parts.join('&') : '';
   }
 
@@ -949,6 +1024,7 @@ Geodude & Psyduck`;
   // Param controls - update URL display on change
   paramFont.addEventListener('input', updateUrlDisplay);
   paramHome.addEventListener('change', updateUrlDisplay);
+  paramTyping.addEventListener('change', updateUrlDisplay);
 
   // ============================================================
   //  INIT

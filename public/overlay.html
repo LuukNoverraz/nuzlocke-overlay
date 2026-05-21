@@ -453,6 +453,14 @@
     const FEMALE = urlParams.get('female') === 'true';
 
     /**
+     * Generation mode for type lookups.
+     * "gen6" (default) uses current PokeAPI types (Gen 6+).
+     * "gen1-5" uses past_types from PokeAPI for pre-Gen-6 typing.
+     * @const {'gen6'|'gen1-5'}
+     */
+    const GENERATION = urlParams.get('gen') === '1-5' ? 'gen1-5' : 'gen6';
+
+    /**
      * PokeAPI artwork variant: "official-artwork" (default) or "home".
      * @const {'official-artwork'|'home'}
      */
@@ -544,29 +552,112 @@
     const typeCache = {};
 
     /**
-     * Parse a species name, detecting an optional "(Shiny)" suffix.
+     * Normalize a Pokemon name for PokeAPI lookup.
+     *
+     * Handles common user-friendly inputs:
+     *   - "Mr. Mime" -> "mr-mime" (removes periods)
+     *   - "Galarian Mr. Mime" -> "mr-mime-galar" (moves region prefix to suffix)
+     *   - "Alolan Raichu" -> "raichu-alola"
+     *   - "Hisuian Zorua" -> "zorua-hisui"
+     *   - "Paldean Wooper" -> "wooper-paldea"
+     *   - "Farfetch'd" -> "farfetchd" (removes apostrophes)
+     *   - "Flabébé" -> "flabebe" (strips diacritics)
+     *   - "Type: Null" -> "type-null" (removes colons)
+     *   - "Nidoran♀" -> "nidoran-f" (gender symbols)
+     *
+     * @param {string} name - Raw species name (lowercased, no "(Shiny)" suffix).
+     * @returns {string} Normalized name ready for PokeAPI.
+     */
+    function normalizePokemonName(name) {
+      let n = name.toLowerCase().trim();
+
+      // Handle regional forms: "galarian mr. mime" -> "mr-mime-galar"
+      const regionMap = {
+        'galarian': 'galar',
+        'alolan': 'alola',
+        'hisuian': 'hisui',
+        'paldean': 'paldea',
+      };
+      for (const [prefix, suffix] of Object.entries(regionMap)) {
+        if (n.startsWith(prefix + ' ')) {
+          n = n.slice(prefix.length).trim() + '-' + suffix;
+          break;
+        }
+      }
+
+      // Remove periods: "mr." -> "mr"
+      n = n.replace(/\./g, '');
+
+      // Remove apostrophes: "farfetch'd" -> "farfetchd"
+      n = n.replace(/'/g, '');
+
+      // Gender symbols: "♀" -> "-f", "♂" -> "-m"
+      n = n.replace(/[♀]/g, '-f').replace(/[♂]/g, '-m');
+
+      // Strip diacritics: "flabébé" -> "flabebe"
+      n = n.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+      // Replace colons with hyphens: "type: null" -> "type- null"
+      n = n.replace(/:/g, '');
+
+      // Replace spaces with hyphens
+      n = n.replace(/\s+/g, '-');
+
+      // Clean up double hyphens
+      n = n.replace(/-+/g, '-');
+
+      // Strip leading/trailing hyphens
+      n = n.replace(/^-|-$/g, '');
+
+      return n;
+    }
+
+    /**
+     * Parse a species name, detecting an optional "(Shiny)" suffix
+     * and normalizing the name for PokeAPI.
      *
      * @param {string} raw - Raw species string (e.g. "Piplup (Shiny)").
      * @returns {{ cleanName: string, isShiny: boolean }}
-     *   - cleanName: lowercased species name with suffix stripped.
+     *   - cleanName: lowercased, normalized species name with suffix stripped.
      *   - isShiny: true if "(Shiny)" was found.
      *
      * @example
      *   parseSpeciesName("Piplup (Shiny)") // -> { cleanName: "piplup", isShiny: true }
-     *   parseSpeciesName("Piplup")         // -> { cleanName: "piplup", isShiny: false }
+     *   parseSpeciesName("Mr. Mime")       // -> { cleanName: "mr-mime", isShiny: false }
+     *   parseSpeciesName("Galarian Mr. Mime") // -> { cleanName: "mr-mime-galar", isShiny: false }
      */
     function parseSpeciesName(raw) {
       const trimmed = raw.trim();
       const match = trimmed.match(/^(.+?)\s*\(Shiny\)\s*$/i);
+      let baseName;
+      let isShiny;
       if (match) {
-        return { cleanName: match[1].toLowerCase().trim(), isShiny: true };
+        baseName = match[1].toLowerCase().trim();
+        isShiny = true;
+      } else {
+        baseName = trimmed.toLowerCase().trim();
+        isShiny = false;
       }
-      return { cleanName: trimmed.toLowerCase().trim(), isShiny: false };
+      return { cleanName: normalizePokemonName(baseName), isShiny };
     }
+
+    /**
+     * Generation names used by PokeAPI's past_types.
+     * @const {string[]}
+     */
+    const GEN_1_5_NAMES = [
+      'generation-i', 'generation-ii', 'generation-iii',
+      'generation-iv', 'generation-v',
+    ];
 
     /**
      * Fetch both primary and secondary types for a Pokemon species from PokeAPI.
      * Results are cached in {@link typeCache} as [primary, secondary|null].
+     *
+     * When GENERATION is "gen1-5", this function checks the `past_types` array
+     * on the PokeAPI response to find the type assignment from Gen 1-5.
+     * For example, Clefairy was Normal-type before Gen 6, so with Gen 1-5 mode
+     * it returns ["normal", null] instead of ["fairy", null].
      *
      * For solo Nuzlocke mode, the primary type is used as `c1` and the secondary
      * type (or primary if mono-type) is used as `c2` in the diagonal gradient,
@@ -585,8 +676,28 @@
         const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${cleanName}`);
         if (!res.ok) return [null, null];
         const data = await res.json();
-        const primary = data.types?.[0]?.type?.name || null;
-        const secondary = data.types?.[1]?.type?.name || null;
+
+        let primary, secondary;
+
+        if (GENERATION === 'gen1-5' && data.past_types && data.past_types.length > 0) {
+          // Find the past_types entry for Gen 1-5
+          const gen15Entry = data.past_types.find(entry =>
+            GEN_1_5_NAMES.includes(entry.generation?.name)
+          );
+          if (gen15Entry && gen15Entry.types && gen15Entry.types.length > 0) {
+            primary = gen15Entry.types[0]?.type?.name || null;
+            secondary = gen15Entry.types[1]?.type?.name || null;
+          } else {
+            // Fall back to current types if no past_types match
+            primary = data.types?.[0]?.type?.name || null;
+            secondary = data.types?.[1]?.type?.name || null;
+          }
+        } else {
+          // Default: use current types (Gen 6+)
+          primary = data.types?.[0]?.type?.name || null;
+          secondary = data.types?.[1]?.type?.name || null;
+        }
+
         const result = [primary, secondary];
         typeCache[cleanName] = result;
         return result;
