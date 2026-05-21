@@ -386,6 +386,11 @@
       transform: scale(0.95);
     }
 
+    .admin-swap-btn:focus-visible {
+      outline: 2px solid #fbbf24;
+      outline-offset: 2px;
+    }
+
     .admin-swap-btn:disabled {
       opacity: 0.3;
       cursor: not-allowed;
@@ -460,19 +465,19 @@
   <div id="overlay" class="hidden">
 
     <!-- Loading State -->
-    <div id="loading" class="active">
-      <div class="loading-spinner"></div>
+    <div id="loading" class="active" role="status" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
       <div>Loading Soul Link...</div>
     </div>
 
     <!-- Error State -->
-    <div id="error">
+    <div id="error" role="alert" aria-live="assertive">
       <div>⚠ Error</div>
       <div id="errorMessage" style="font-size:0.6rem;margin-top:4px;"></div>
     </div>
 
     <!-- Empty State -->
-    <div id="empty">
+    <div id="empty" role="status" aria-live="polite">
       <div>No Soul Link pairs yet</div>
       <div style="font-size:0.55rem;margin-top:4px;opacity:0.5;">Add pairings to run.yaml to get started!</div>
     </div>
@@ -491,7 +496,10 @@
   <script>
     // ============================================================
     //  Soul Link Overlay — OBS Browser Source
-    //  Reads pairing data from /run.yaml and renders live.
+    //  Reads pairing data from one of these sources (priority order):
+    //    1. localStorage key "nuzlocke-yaml" (set by index.html)
+    //    2. ?data= URL parameter (base64-encoded YAML)
+    //    3. /run.yaml (fallback for local dev)
     //
     //  @module overlay
     //  @requires PokeAPI (external sprite/type lookups)
@@ -895,23 +903,17 @@
     }
 
     // ============================================================
-    //  FETCH & LOAD FROM RUN.YAML
+    //  DATA SOURCE — localStorage, ?data=, or /run.yaml fallback
     //  @section loader
+    //
+    //  Priority:
+    //    1. localStorage key "nuzlocke-yaml" (set by index.html)
+    //    2. ?data= URL parameter (base64-encoded YAML)
+    //    3. /run.yaml (fallback for local dev)
     // ============================================================
 
-    /**
-     * Timestamp of the last successful fetch (from Last-Modified header).
-     * Used for HTTP conditional requests.
-     * @type {string|null}
-     */
-    let lastModified = null;
-
-    /**
-     * Content-Length of the last successful fetch.
-     * Fallback change detector when Last-Modified is unavailable.
-     * @type {number|null}
-     */
-    let lastContentLength = null;
+    /** @const {string} localStorage key shared with index.html */
+    const STORAGE_KEY = 'nuzlocke-yaml';
 
     /**
      * Cached JSON of the last rendered pairs for change detection.
@@ -929,89 +931,118 @@
     const POLL_INTERVAL_MS = 3000;
 
     /**
-     * Fetch /run.yaml and re-render if the content has changed.
+     * Try to load YAML from localStorage (set by index.html).
+     * @returns {string|null} YAML text or null if not found/empty.
+     */
+    function loadFromLocalStorage() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved && saved.trim()) return saved.trim();
+      } catch (e) {
+        // localStorage may be unavailable in some OBS contexts
+        console.warn('[Overlay] localStorage not available:', e.message);
+      }
+      return null;
+    }
+
+    /**
+     * Try to load YAML from the ?data= URL parameter (base64-encoded).
+     * @returns {string|null} Decoded YAML text or null if param missing.
+     */
+    function loadFromUrlParam() {
+      const encoded = urlParams.get('data');
+      if (!encoded) return null;
+      try {
+        const decoded = decodeURIComponent(escape(atob(encoded)));
+        if (decoded.trim()) return decoded.trim();
+      } catch (e) {
+        console.warn('[Overlay] Failed to decode ?data= parameter:', e.message);
+      }
+      return null;
+    }
+
+    /**
+     * Parse YAML text and render the overlay.
      *
-     * Uses HTTP conditional requests (If-Modified-Since) to avoid
-     * downloading the full body when the file hasn't changed.
-     * Falls back to Content-Length comparison if the server doesn't
-     * provide Last-Modified headers.
+     * @param {string} text - Raw YAML content.
+     * @param {string} source - Label for the data source (for logging).
+     * @returns {Promise<boolean>} True if rendered successfully.
+     */
+    async function parseAndRender(text, source) {
+      if (!text.trim()) {
+        showError('YAML data is empty');
+        return false;
+      }
+
+      const parsed = parseRunTxt(text);
+
+      // Validate slug against query param (if one was provided)
+      if (QUERY_SLUG && QUERY_SLUG !== parsed.slug && !QUERY_SLUG.startsWith('run=')) {
+        console.warn(`[Overlay] Query slug "${QUERY_SLUG}" doesn't match file title slug "${parsed.slug}"`);
+      }
+
+      // Content-based change detection
+      const newJson = JSON.stringify(parsed.pairs);
+      if (newJson === lastPairsJson) return false;
+
+      lastPairsJson = newJson;
+
+      console.log(`[Overlay] Rendering from ${source} (${parsed.pairs.length} pairs)`);
+
+      // --- Render ---
+      await renderPairs(parsed.pairs);
+      setupAdminPanel(parsed.pairs);
+
+      hideAllStates();
+      if (parsed.pairs.length === 0) {
+        showEmpty();
+      } else {
+        pairsContainer.style.display = 'flex';
+      }
+
+      return true;
+    }
+
+    /**
+     * Main load function — tries sources in priority order.
+     *
+     * Priority:
+     *   1. localStorage key "nuzlocke-yaml" (set by index.html)
+     *   2. ?data= URL parameter (base64-encoded YAML)
+     *   3. /run.yaml (fallback for local dev)
      *
      * @returns {Promise<void>}
      */
     async function loadFromRunTxt() {
       try {
-        // --- Conditional request: only download body if modified ---
-        const headers = {};
-        if (lastModified) {
-          headers['If-Modified-Since'] = lastModified;
-        }
-
-        const res = await fetch('/run.yaml', { headers });
-
-        // 304 Not Modified → skip
-        if (res.status === 304) {
+        // ── Priority 1: localStorage ──
+        const lsYaml = loadFromLocalStorage();
+        if (lsYaml) {
+          await parseAndRender(lsYaml, 'localStorage');
           return;
         }
+
+        // ── Priority 2: ?data= URL parameter ──
+        const urlYaml = loadFromUrlParam();
+        if (urlYaml) {
+          await parseAndRender(urlYaml, '?data= param');
+          return;
+        }
+
+        // ── Priority 3: /run.yaml fallback ──
+        const res = await fetch('/run.yaml');
 
         if (!res.ok) {
           showError(`Failed to load run.yaml (HTTP ${res.status})`);
           return;
         }
 
-        // --- Update change-detection metadata ---
-        const serverLastModified = res.headers.get('Last-Modified');
-        const contentLength = parseInt(res.headers.get('Content-Length'), 10);
-
-        if (serverLastModified) {
-          lastModified = serverLastModified;
-        }
-
-        // If server sent Last-Modified AND Content-Length matches,
-        // we can skip the body entirely (belt-and-suspenders).
-        // But we still need the body for parsing, so we always read it.
-
         const text = await res.text();
-
-        if (!text.trim()) {
-          showError('run.yaml is empty');
-          return;
-        }
-
-        // --- Fallback change detection via Content-Length ---
-        if (!serverLastModified && contentLength && contentLength === lastContentLength) {
-          // Same size, likely unchanged — skip re-render
-          return;
-        }
-        lastContentLength = contentLength;
-
-        // --- Parse ---
-        const parsed = parseRunTxt(text);
-
-        // Validate slug against query param (if one was provided)
-        if (QUERY_SLUG && QUERY_SLUG !== parsed.slug && !QUERY_SLUG.startsWith('run=')) {
-          console.warn(`[Overlay] Query slug "${QUERY_SLUG}" doesn't match file title slug "${parsed.slug}"`);
-        }
-
-        // --- Content-based change detection (final safety net) ---
-        const newJson = JSON.stringify(parsed.pairs);
-        if (newJson === lastPairsJson) return;
-
-        lastPairsJson = newJson;
-
-        // --- Render ---
-        await renderPairs(parsed.pairs);
-        setupAdminPanel(parsed.pairs);
-
-        hideAllStates();
-        if (parsed.pairs.length === 0) {
-          showEmpty();
-        } else {
-          pairsContainer.style.display = 'flex';
-        }
+        await parseAndRender(text, '/run.yaml');
 
       } catch (err) {
-        console.error('[Overlay] Error loading run.yaml:', err);
-        showError(err.message || 'Failed to load run.yaml');
+        console.error('[Overlay] Error loading data:', err);
+        showError(err.message || 'Failed to load data');
       }
     }
 
@@ -1187,6 +1218,7 @@
         btn.className = 'admin-swap-btn';
         btn.textContent = `⤾ ${pair.routeName}`;
         btn.dataset.origin = pair.originKey;
+        btn.setAttribute('aria-label', `Toggle swap for ${pair.routeName}`);
 
         btn.addEventListener('click', () => {
           // Toggle swap state locally (no Firebase needed)

@@ -7,7 +7,8 @@
  *
  * Usage:
  *   node server.js
- *   → http://localhost:3000/overlay.html
+ *   → http://localhost:3000/          (setup page)
+ *   → http://localhost:3000/overlay.html  (OBS overlay)
  *
  * @module server
  * @requires http (Node.js built-in)
@@ -65,11 +66,9 @@ const server = http.createServer((req, res) => {
   // ── Parse URL ──────────────────────────────────────────────
   let urlPath = req.url.split('?')[0]; // strip query params
 
-  // Redirect root to overlay
+  // Serve index.html at root (the setup page)
   if (urlPath === '/') {
-    res.writeHead(302, { Location: '/overlay.html' });
-    res.end();
-    return;
+    urlPath = '/index.html';
   }
 
   // ── Resolve file path ──────────────────────────────────────
@@ -131,9 +130,10 @@ const server = http.createServer((req, res) => {
 // ─── Start ───────────────────────────────────────────────────────
 
 server.listen(PORT, () => {
-  console.log(`\n  🎮 Soul Link Overlay Server`);
+  console.log(`\n  🎮 Nuzlocke Overlay Server`);
   console.log(`  ─────────────────────────`);
-  console.log(`  Local:   http://localhost:${PORT}/overlay.html`);
+  console.log(`  Setup:   http://localhost:${PORT}/`);
+  console.log(`  Overlay: http://localhost:${PORT}/overlay.html`);
   console.log(`  Data:    http://localhost:${PORT}/run.yaml`);
   console.log(`\n  Edit public/run.yaml and the overlay auto-updates.\n`);
 });
