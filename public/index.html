@@ -802,7 +802,7 @@ Geodude & Psyduck`;
    */
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
-    themeToggle.textContent = theme === 'dark' ? '\u263E' : '\u2600';
+    themeToggle.textContent = theme === 'dark' ? '\u2600' : '\u263E';
     localStorage.setItem(THEME_KEY, theme);
   }
 
