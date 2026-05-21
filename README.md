@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="public/favicon/favicon.svg" width="38" height="38" alt="" style="vertical-align:middle;margin-right:10px;" />
+  <img src="public/favicon/favicon.svg" width="38" height="38" alt="" style="vertical-align:bottom;margin-right:10px;" />
   Nuzlocke Overlay
 </h1>
 
