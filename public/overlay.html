@@ -446,13 +446,6 @@
     /** @const {URLSearchParams} Parsed query string */
     const urlParams = new URLSearchParams(window.location.search);
 
-    /**
-     * The slug from the URL query string (e.g. `?attempt4` becomes `"attempt4"`).
-     * Used to validate against the title line in run.yaml.
-     * @const {string}
-     */
-    const QUERY_SLUG = window.location.search.replace(/^\?/, '').trim();
-
     /** @const {boolean} Global shiny override for all sprites */
     const SHINY = urlParams.get('shiny') === 'true';
 
@@ -473,8 +466,8 @@
     //  Font by passing `?font=FontName` in the URL.
     //
     //  Examples:
-    //    ?attempt4&font=Press+Start+2P
-    //    ?attempt4&font=Rubik&font-weight=300;400;600;700
+    //    ?font=Press+Start+2P
+    //    ?font=Rubik&font-weight=300;400;600;700
     //
     //  The font is loaded dynamically via a <link> tag injected into
     //  <head>. Once loaded, it becomes the primary font-family with
@@ -695,7 +688,6 @@
      * ```
      *
      * Rules:
-     * - Line 1: Title -> slug (lowercased, spaces removed).
      * - Lines starting with "- ": Route/pairing header.
      *   - If header ends with `(DEAD)` or `(BOX)`, the entire pairing is skipped.
      * - Next non-blank line: Nicknames (single for Solo, P1 & P2 for Soul Link).
@@ -704,7 +696,7 @@
      * - Blank lines are ignored.
      *
      * @param {string} text - Raw content of run.yaml.
-     * @returns {{ title: string, slug: string, pairs: Array<Object> }}
+     * @returns {{ pairs: Array<Object> }}
      *   Parsed data ready for rendering.
      *   Each pair object has:
      *   - `isSolo` {boolean} - true if this route has only one Pokemon
@@ -716,12 +708,8 @@
       const rawLines = text.split('\n');
       const lines = rawLines.filter(line => !line.trim().startsWith('#'));
 
-      // --- Line 1: Title ---
-      const title = (lines[0] || '').trim();
-      const slug = title.toLowerCase().replace(/\s+/g, '');
-
       const pairs = [];
-      let i = 1; // skip title line
+      let i = 0;
 
       while (i < lines.length) {
         const line = lines[i].trim();
@@ -818,7 +806,7 @@
         i++;
       }
 
-      return { title, slug, pairs };
+      return { pairs };
     }
 
     // ============================================================
@@ -876,11 +864,6 @@
       }
 
       const parsed = parseRunTxt(text);
-
-      // Validate slug against query param (if one was provided)
-      if (QUERY_SLUG && QUERY_SLUG !== parsed.slug && !QUERY_SLUG.startsWith('run=')) {
-        console.warn(`[Overlay] Query slug "${QUERY_SLUG}" doesn't match file title slug "${parsed.slug}"`);
-      }
 
       // Content-based change detection
       const newJson = JSON.stringify(parsed.pairs);

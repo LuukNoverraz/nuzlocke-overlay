@@ -80,8 +80,6 @@ The overlay supports **two modes**, auto-detected per route:
 #### Solo Nuzlocke Mode (one Pokemon per route)
 
 ```yaml
-ATTEMPT 4
-
 - Route 201
 Nightfall
 Piplup (Shiny)
@@ -98,8 +96,6 @@ Starly
 #### Soul Link Mode (two Pokemon per route)
 
 ```yaml
-ATTEMPT 4
-
 - Route 201
 Nightfall & Daybreak
 Piplup (Shiny) & Piplup
@@ -114,7 +110,6 @@ Starly & Bidoof
 ```
 
 **Format rules:**
-- **Line 1:** Title -- becomes the URL slug (e.g. `"ATTEMPT 4"` becomes `?attempt4`)
 - **`- Route Name`:** Starts a new pairing
 - **Next line:** Nicknames -- single nickname (Solo) or `Player1 & Player2` (Soul Link)
 - **Next line:** Species -- single species (Solo) or `Player1 & Player2` (Soul Link)
