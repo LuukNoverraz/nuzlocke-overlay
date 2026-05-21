@@ -1,35 +1,69 @@
-# Nuzlocke Overlay
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/favicon/favicon.svg">
+    <img src="public/favicon/favicon.svg" width="48" height="48" alt="Nuzlocke Overlay logo">
+  </picture>
+</p>
 
-A **standalone OBS Browser Source** for displaying live **Soul Link Nuzlocke** (two players, linked pairs) or **Solo Nuzlocke** (single player) pairings during a Twitch stream.
+<h1 align="center">Nuzlocke Overlay</h1>
 
-Includes a **web-based setup page** where you can edit your pairings in-browser — no file editing required. Your data is saved in your browser's localStorage, so it persists when you come back.
+<p align="center">
+  A <strong>standalone OBS Browser Source</strong> for displaying live <strong>Nuzlocke</strong> pairings —<br>
+  supports <strong>Soul Link</strong> (two players, linked pairs) and <strong>Solo Nuzlocke</strong> (single player) runs.
+</p>
+
+<p align="center">
+  <a href="https://nuzlocke-overlay.pages.dev" target="_blank">🌐 Live Demo</a>
+  &nbsp;·&nbsp;
+  <a href="#quick-start">🚀 Quick Start</a>
+  &nbsp;·&nbsp;
+  <a href="#obs-setup">📺 OBS Setup</a>
+</p>
+
+---
+
+## Overview
+
+Whether you're running a **Soul Link** with a friend or a **Solo Nuzlocke** on your own, this overlay shows your Pokémon pairings live on stream. It works as a **Browser Source** in OBS — no plugins, no extra software.
+
+Includes a **web-based setup page** where you can edit your pairings in-browser. Your data is saved in localStorage, so it persists when you come back.
+
+---
 
 ## Quick Start
+
+### 🌐 Online (Recommended)
+
+Just visit the live site:
+
+```
+https://nuzlocke-overlay.pages.dev
+```
+
+1. Type your pairings in the YAML editor (auto-saves to localStorage)
+2. Click **"Copy Overlay URL"**
+3. Paste the URL into OBS as a Browser Source
+
+No server, no installation — everything runs in your browser.
+
+### 💻 Local Development
 
 ```bash
 node server.js
 ```
 
-Then open in your browser:
+Then open `http://localhost:3000/` in your browser.
 
-```
-http://localhost:3000/
-```
-
-This opens the **setup page** where you can:
-1. Type your pairings in the YAML editor (auto-saves to localStorage)
-2. Copy the overlay URL
-3. Paste it into OBS as a Browser Source
+---
 
 ## How It Works
 
 ### Option A: Use the Web Setup Page (Recommended)
 
-1. Start the server: `node server.js`
-2. Open `http://localhost:3000/` in your browser
-3. Type your pairings in the YAML editor — it auto-saves every keystroke
-4. Click **"Copy Overlay URL"** to copy the link
-5. Paste the link into OBS as a Browser Source
+1. Open the setup page — either [online](https://nuzlocke-overlay.pages.dev) or locally at `http://localhost:3000/`
+2. Type your pairings in the YAML editor — it auto-saves every keystroke
+3. Click **"Copy Overlay URL"** to copy the link
+4. Paste the link into OBS as a Browser Source
 
 Your data is saved in your browser's localStorage. Come back anytime — it'll still be there.
 
@@ -43,6 +77,8 @@ Click **"Copy URL (data embedded)"** on the setup page to get a URL that contain
 - You want a fully portable link (no localStorage dependency)
 - You're sharing the overlay with someone else
 - OBS doesn't have access to the same localStorage
+
+---
 
 ## YAML Format
 
@@ -105,6 +141,8 @@ Bidoof & Starly
 
 **Mixed mode:** You can mix Soul Link and Solo routes in the same file. Each route is auto-detected independently.
 
+---
+
 ## OBS Setup
 
 Add a **Browser** source with:
@@ -115,6 +153,8 @@ Add a **Browser** source with:
 | Width | Your stream canvas width (e.g. 1920) |
 | Height | Your stream canvas height (e.g. 1080) |
 | Background | Transparent |
+
+---
 
 ## URL Parameters
 
@@ -139,6 +179,8 @@ The overlay uses **FLURO** by default, but you can swap to any Google Font:
 
 The font is loaded dynamically via the Google Fonts CSS2 API. FLURO is always kept as a fallback.
 
+---
+
 ## Data Source Priority
 
 The overlay reads data from these sources, in order:
@@ -146,6 +188,8 @@ The overlay reads data from these sources, in order:
 1. **localStorage** (key `nuzlocke-yaml`) — set by the setup page (`index.html`)
 2. **`?data=` URL parameter** — base64-encoded YAML for portable links
 3. **`/run.yaml`** — fallback for local development
+
+---
 
 ## Project Structure
 
@@ -163,15 +207,27 @@ nuzlocke-overlay/
 └── README.md
 ```
 
+---
+
 ## Deployment
 
-To deploy as a website (e.g., on Vercel, Netlify, or any static host):
+### Cloudflare Pages (Recommended)
 
-1. Upload the `public/` folder to your static host
-2. Ensure `index.html` is served at the root
-3. Users visit your site → edit YAML → copy overlay URL → paste in OBS
+1. Push your code to GitHub
+2. Connect Cloudflare Pages to your repo
+3. Set **Build output directory** to **`public`**
+4. Leave **Build command** empty
+5. Deploy!
 
-No server-side code is needed for the deployed version — everything runs in the browser.
+Your site will be live at `https://nuzlocke-overlay.pages.dev` (or your custom domain).
+
+### Any Static Host
+
+Upload the `public/` folder to any static host (Netlify, Vercel, GitHub Pages, etc.) and ensure `index.html` is served at the root.
+
+No server-side code is needed — everything runs in the browser.
+
+---
 
 ## License
 
