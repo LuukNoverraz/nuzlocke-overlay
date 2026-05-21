@@ -61,7 +61,7 @@
     }
 
     /* ============================================================
-       OVERLAY CONTAINER — fully transparent, full-width
+       OVERLAY CONTAINER - fully transparent, full-width
        ============================================================ */
     #overlay {
       position: fixed;
@@ -83,7 +83,7 @@
     }
 
     /* ============================================================
-       PAIRS ROW — horizontal scroll of circles
+       PAIRS ROW - horizontal scroll of circles
        ============================================================ */
     #pairs-container {
       width: 100%;
@@ -108,7 +108,7 @@
     }
 
     /* ============================================================
-       PAIR CIRCLE — the "O" containing a duo
+       PAIR CIRCLE - the "O" containing a duo
        ============================================================ */
     .pair-circle {
       width: 170px;
@@ -174,7 +174,7 @@
     }
 
     /* ============================================================
-       POKEMON NAMES inside circle — top & bottom
+       POKEMON NAMES inside circle - top & bottom
        ============================================================ */
     .pair-name-primary {
       font-family: 'FLURO', sans-serif;
@@ -223,7 +223,7 @@
     }
 
     /* ============================================================
-       SPRITES inside circle — stacked diagonally (Soul Link)
+       SPRITES inside circle - stacked diagonally (Soul Link)
        ============================================================ */
     .circle-sprite {
       position: absolute;
@@ -255,8 +255,8 @@
     }
 
     /* ============================================================
-       SPRITES — Solo Nuzlocke (single Pokémon, centered, larger)
-       Applied when a route has only one Pokémon (no "&" in species).
+       SPRITES - Solo Nuzlocke (single Pokemon, centered, larger)
+       Applied when a route has only one Pokemon (no "&" in species).
        ============================================================ */
     .circle-sprite.solo {
       position: absolute;
@@ -269,7 +269,7 @@
     }
 
     /* ============================================================
-       NAMES — Solo Nuzlocke (single name, centered at bottom)
+       NAMES - Solo Nuzlocke (single name, centered at bottom)
        ============================================================ */
     .pair-name-solo {
       font-family: 'FLURO', sans-serif;
@@ -333,67 +333,6 @@
 
     @keyframes spin {
       to { transform: rotate(360deg); }
-    }
-
-    /* ============================================================
-       ADMIN PANEL
-       ============================================================ */
-    #admin-panel {
-      display: none;
-      flex-shrink: 0;
-      padding-top: 6px;
-      margin-top: 4px;
-      pointer-events: auto;
-    }
-
-    #admin-panel.active {
-      display: block;
-    }
-
-    #admin-panel .admin-label {
-      font-family: 'FLURO', sans-serif;
-      font-weight: 300;
-      font-size: 0.5rem;
-      color: rgba(251, 191, 36, 0.35);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-      text-align: center;
-    }
-
-    .admin-swap-btn {
-      font-family: 'FLURO', sans-serif;
-      font-weight: 600;
-      font-size: 0.5rem;
-      padding: 2px 8px;
-      border-radius: 6px;
-      border: 1px solid rgba(251, 191, 36, 0.2);
-      background: rgba(251, 191, 36, 0.06);
-      color: rgba(251, 191, 36, 0.6);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      letter-spacing: 0.04em;
-      white-space: nowrap;
-    }
-
-    .admin-swap-btn:hover {
-      background: rgba(251, 191, 36, 0.12);
-      border-color: rgba(251, 191, 36, 0.35);
-      color: #fbbf24;
-    }
-
-    .admin-swap-btn:active {
-      transform: scale(0.95);
-    }
-
-    .admin-swap-btn:focus-visible {
-      outline: 2px solid #fbbf24;
-      outline-offset: 2px;
-    }
-
-    .admin-swap-btn:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
     }
 
     /* ============================================================
@@ -467,39 +406,32 @@
     <!-- Loading State -->
     <div id="loading" class="active" role="status" aria-live="polite">
       <div class="loading-spinner" aria-hidden="true"></div>
-      <div>Loading Soul Link...</div>
+      <div>Loading Nuzlocke...</div>
     </div>
 
     <!-- Error State -->
     <div id="error" role="alert" aria-live="assertive">
-      <div>⚠ Error</div>
+      <div>Error</div>
       <div id="errorMessage" style="font-size:0.6rem;margin-top:4px;"></div>
     </div>
 
     <!-- Empty State -->
     <div id="empty" role="status" aria-live="polite">
-      <div>No Soul Link pairs yet</div>
+      <div>No pairings yet</div>
       <div style="font-size:0.55rem;margin-top:4px;opacity:0.5;">Add pairings to run.yaml to get started!</div>
     </div>
 
     <!-- Pairs Row (horizontal circles) -->
     <div id="pairs-container" style="display:none;"></div>
 
-    <!-- Admin Panel -->
-    <div id="admin-panel">
-      <div class="admin-label">⚙ Admin — Click to simulate a swap</div>
-      <div id="admin-buttons" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;"></div>
-    </div>
-
   </div>
 
   <script>
     // ============================================================
-    //  Soul Link Overlay — OBS Browser Source
+    //  Nuzlocke Overlay - OBS Browser Source
     //  Reads pairing data from one of these sources (priority order):
     //    1. localStorage key "nuzlocke-yaml" (set by index.html)
-    //    2. ?data= URL parameter (base64-encoded YAML)
-    //    3. /run.yaml (fallback for local dev)
+    //    2. /run.yaml (fallback for local dev)
     //
     //  @module overlay
     //  @requires PokeAPI (external sprite/type lookups)
@@ -515,14 +447,11 @@
     const urlParams = new URLSearchParams(window.location.search);
 
     /**
-     * The slug from the URL query string (e.g. `?attempt4` → `"attempt4"`).
+     * The slug from the URL query string (e.g. `?attempt4` becomes `"attempt4"`).
      * Used to validate against the title line in run.yaml.
      * @const {string}
      */
     const QUERY_SLUG = window.location.search.replace(/^\?/, '').trim();
-
-    /** @const {boolean} Show admin swap-simulation buttons */
-    const IS_ADMIN = urlParams.get('admin') === 'true';
 
     /** @const {boolean} Global shiny override for all sprites */
     const SHINY = urlParams.get('shiny') === 'true';
@@ -581,8 +510,6 @@
     const errorMessage = document.getElementById('errorMessage');
     const emptyEl = document.getElementById('empty');
     const pairsContainer = document.getElementById('pairs-container');
-    const adminPanel = document.getElementById('admin-panel');
-    const adminButtons = document.getElementById('admin-buttons');
 
     // ============================================================
     //  SPRITE & TYPE LOOKUPS
@@ -598,13 +525,13 @@
       `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/${ART_VARIANT}`;
 
     /**
-     * Cache for dex ID lookups: speciesName → nationalDexId.
+     * Cache for dex ID lookups: speciesName -> nationalDexId.
      * @type {Object<string, number>}
      */
     const dexCache = {};
 
     /**
-     * Map of Pokémon type names to their hex colors.
+     * Map of Pokemon type names to their hex colors.
      * Used for the diagonal gradient on pair circles.
      * @const {Object<string, string>}
      */
@@ -618,7 +545,7 @@
     };
 
     /**
-     * Cache for type lookups: speciesName → [primaryType, secondaryType|null].
+     * Cache for type lookups: speciesName -> [primaryType, secondaryType|null].
      * @type {Object<string, [string|null, string|null]>}
      */
     const typeCache = {};
@@ -632,11 +559,8 @@
      *   - isShiny: true if "(Shiny)" was found.
      *
      * @example
-     *   parseSpeciesName("Piplup (Shiny)") // → { cleanName: "piplup", isShiny: true }
-     *   parseSpeciesName("Piplup")         // → { cleanName: "piplup", isShiny: false }
-     *
-     * @note Only the first "(Shiny)" match is detected.
-     *   "Pikachu (Shiny) (Shiny)" → cleanName: "pikachu (shiny)", isShiny: true
+     *   parseSpeciesName("Piplup (Shiny)") // -> { cleanName: "piplup", isShiny: true }
+     *   parseSpeciesName("Piplup")         // -> { cleanName: "piplup", isShiny: false }
      */
     function parseSpeciesName(raw) {
       const trimmed = raw.trim();
@@ -648,7 +572,7 @@
     }
 
     /**
-     * Fetch both primary and secondary types for a Pokémon species from PokeAPI.
+     * Fetch both primary and secondary types for a Pokemon species from PokeAPI.
      * Results are cached in {@link typeCache} as [primary, secondary|null].
      *
      * For solo Nuzlocke mode, the primary type is used as `c1` and the secondary
@@ -658,8 +582,8 @@
      * @param {string} speciesName - Species name (may include "(Shiny)" suffix).
      * @returns {Promise<[string|null, string|null]>}
      *   Tuple of [primaryTypeName, secondaryTypeName|null].
-     *   - primaryTypeName: e.g. "water" — the first type slot.
-     *   - secondaryTypeName: e.g. "flying" — the second type slot, or null if mono-type.
+     *   - primaryTypeName: e.g. "water" - the first type slot.
+     *   - secondaryTypeName: e.g. "flying" - the second type slot, or null if mono-type.
      */
     async function getPokemonTypes(speciesName) {
       const { cleanName } = parseSpeciesName(speciesName);
@@ -679,7 +603,7 @@
     }
 
     /**
-     * Fetch the National Pokédex ID for a species from PokeAPI.
+     * Fetch the National Pokedex ID for a species from PokeAPI.
      * Results are cached in {@link dexCache}.
      *
      * @param {string} speciesName - Species name (may include "(Shiny)" suffix).
@@ -700,14 +624,14 @@
     }
 
     /**
-     * Build a PokeAPI sprite URL for a given Pokémon.
+     * Build a PokeAPI sprite URL for a given Pokemon.
      *
      * Shiny priority (highest to lowest):
      *   1. perPokemonShiny (from "(Shiny)" suffix in run.yaml)
      *   2. global SHINY param (from URL ?shiny=true)
      *
-     * @param {number|null} dexId - National Pokédex ID.
-     * @param {boolean} perPokemonShiny - Per-Pokémon shiny flag from parser.
+     * @param {number|null} dexId - National Pokedex ID.
+     * @param {boolean} perPokemonShiny - Per-Pokemon shiny flag from parser.
      * @param {boolean} female - Whether to request female variant.
      * @returns {string|null} Full sprite URL, or null if dexId is falsy.
      *
@@ -749,34 +673,33 @@
     /**
      * Parse the .yaml format into structured pairing data.
      *
-     * The `.yaml` file format is identical to the original `.txt` format
-     * but adds support for comment lines. Lines starting with `#` are
+     * The `.yaml` file format supports comment lines. Lines starting with `#` are
      * stripped before parsing, allowing streamers to comment out dead
      * pairs, add notes, or temporarily disable routes without deleting
      * them from the file.
      *
      * Supports two modes, auto-detected per route:
      *
-     * **Soul Link** (two Pokémon per route — species line contains `&`):
-     * ```
-     * - Route 201
-     * Nightfall & Daybreak
-     * Piplup & Piplup
-     * ```
-     *
-     * **Solo Nuzlocke** (one Pokémon per route — species line has NO `&`):
+     * **Solo Nuzlocke** (one Pokemon per route - species line has NO `&`):
      * ```
      * - Route 201
      * Nightfall
      * Piplup (Shiny)
      * ```
      *
+     * **Soul Link** (two Pokemon per route - species line contains `&`):
+     * ```
+     * - Route 201
+     * Nightfall & Daybreak
+     * Piplup & Piplup
+     * ```
+     *
      * Rules:
-     * - Line 1: Title → slug (lowercased, spaces removed).
+     * - Line 1: Title -> slug (lowercased, spaces removed).
      * - Lines starting with "- ": Route/pairing header.
      *   - If header ends with `(DEAD)` or `(BOX)`, the entire pairing is skipped.
-     * - Next non-blank line: Nicknames (P1 & P2 for Soul Link, or single for Solo).
-     * - Next non-blank line: Species (P1 & P2 for Soul Link, or single for Solo).
+     * - Next non-blank line: Nicknames (single for Solo, P1 & P2 for Soul Link).
+     * - Next non-blank line: Species (single for Solo, P1 & P2 for Soul Link).
      *   - Species may end with `(Shiny)` to flag shiny sprite.
      * - Blank lines are ignored.
      *
@@ -784,14 +707,12 @@
      * @returns {{ title: string, slug: string, pairs: Array<Object> }}
      *   Parsed data ready for rendering.
      *   Each pair object has:
-     *   - `isSolo` {boolean} — true if this route has only one Pokémon
-     *   - `p1` {Object} — always populated (the single Pokémon in solo mode)
-     *   - `p2` {Object|null} — null in solo mode, populated in Soul Link mode
+     *   - `isSolo` {boolean} - true if this route has only one Pokemon
+     *   - `p1` {Object} - always populated (the single Pokemon in solo mode)
+     *   - `p2` {Object|null} - null in solo mode, populated in Soul Link mode
      */
     function parseRunTxt(text) {
       // Strip comment lines (lines starting with #) before parsing.
-      // This allows streamers to comment out dead pairs, add notes,
-      // or temporarily disable routes without deleting them.
       const rawLines = text.split('\n');
       const lines = rawLines.filter(line => !line.trim().startsWith('#'));
 
@@ -834,12 +755,12 @@
           }
 
           // --- Auto-detect mode from species line ---
-          // If the species line contains "&", it's a Soul Link pair (two Pokémon).
-          // Otherwise, it's a Solo Nuzlocke (one Pokémon).
+          // If the species line contains "&", it's a Soul Link pair (two Pokemon).
+          // Otherwise, it's a Solo Nuzlocke (one Pokemon).
           const isSolo = !speciesLine.includes('&');
 
           if (isSolo) {
-            // ── Solo Nuzlocke mode ──
+            // Solo Nuzlocke mode
             // Single nickname, single species.
             const nickname = nicknameLine.trim();
             const parsed = parseSpeciesName(speciesLine);
@@ -855,11 +776,10 @@
                 shiny: parsed.isShiny,
                 events: {},
               },
-              p2: null, // No second Pokémon in solo mode
-              swappedAt: null,
+              p2: null,
             });
           } else {
-            // ── Soul Link mode (two Pokémon) ──
+            // Soul Link mode (two Pokemon)
             // Parse "Nick1 & Nick2"
             const nickParts = nicknameLine.split('&').map(s => s.trim());
             const nick1 = nickParts[0] || '';
@@ -891,7 +811,6 @@
                 shiny: parsed2.isShiny,
                 events: {},
               },
-              swappedAt: null,
             });
           }
         }
@@ -903,13 +822,12 @@
     }
 
     // ============================================================
-    //  DATA SOURCE — localStorage, ?data=, or /run.yaml fallback
+    //  DATA SOURCE - localStorage or /run.yaml fallback
     //  @section loader
     //
     //  Priority:
     //    1. localStorage key "nuzlocke-yaml" (set by index.html)
-    //    2. ?data= URL parameter (base64-encoded YAML)
-    //    3. /run.yaml (fallback for local dev)
+    //    2. /run.yaml (fallback for local dev)
     // ============================================================
 
     /** @const {string} localStorage key shared with index.html */
@@ -939,24 +857,7 @@
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved && saved.trim()) return saved.trim();
       } catch (e) {
-        // localStorage may be unavailable in some OBS contexts
         console.warn('[Overlay] localStorage not available:', e.message);
-      }
-      return null;
-    }
-
-    /**
-     * Try to load YAML from the ?data= URL parameter (base64-encoded).
-     * @returns {string|null} Decoded YAML text or null if param missing.
-     */
-    function loadFromUrlParam() {
-      const encoded = urlParams.get('data');
-      if (!encoded) return null;
-      try {
-        const decoded = decodeURIComponent(escape(atob(encoded)));
-        if (decoded.trim()) return decoded.trim();
-      } catch (e) {
-        console.warn('[Overlay] Failed to decode ?data= parameter:', e.message);
       }
       return null;
     }
@@ -991,7 +892,6 @@
 
       // --- Render ---
       await renderPairs(parsed.pairs);
-      setupAdminPanel(parsed.pairs);
 
       hideAllStates();
       if (parsed.pairs.length === 0) {
@@ -1004,32 +904,24 @@
     }
 
     /**
-     * Main load function — tries sources in priority order.
+     * Main load function - tries sources in priority order.
      *
      * Priority:
      *   1. localStorage key "nuzlocke-yaml" (set by index.html)
-     *   2. ?data= URL parameter (base64-encoded YAML)
-     *   3. /run.yaml (fallback for local dev)
+     *   2. /run.yaml (fallback for local dev)
      *
      * @returns {Promise<void>}
      */
     async function loadFromRunTxt() {
       try {
-        // ── Priority 1: localStorage ──
+        // Priority 1: localStorage
         const lsYaml = loadFromLocalStorage();
         if (lsYaml) {
           await parseAndRender(lsYaml, 'localStorage');
           return;
         }
 
-        // ── Priority 2: ?data= URL parameter ──
-        const urlYaml = loadFromUrlParam();
-        if (urlYaml) {
-          await parseAndRender(urlYaml, '?data= param');
-          return;
-        }
-
-        // ── Priority 3: /run.yaml fallback ──
+        // Priority 2: /run.yaml fallback
         const res = await fetch('/run.yaml');
 
         if (!res.ok) {
@@ -1047,19 +939,15 @@
     }
 
     // ============================================================
-    //  RENDER — horizontal circles
-    //  Supports both Soul Link (two Pokémon) and Solo Nuzlocke
-    //  (one Pokémon) modes, auto-detected per route.
+    //  RENDER - horizontal circles
+    //  Supports both Soul Link (two Pokemon) and Solo Nuzlocke
+    //  (one Pokemon) modes, auto-detected per route.
     // ============================================================
     async function renderPairs(pairs) {
       pairsContainer.innerHTML = '';
       if (pairs.length === 0) return;
 
       // Batch resolve dex IDs and type colors.
-      // For each Pokémon we fetch [primaryType, secondaryType] so that
-      // solo Nuzlocke circles can use the same diagonal gradient as
-      // Soul Link circles (primary → secondary, or primary → primary
-      // if the Pokémon is mono-type).
       const dexPromises = [];
       const typePromises = [];
       for (const pair of pairs) {
@@ -1067,311 +955,210 @@
         const name2 = pair.p2 ? pair.p2.name : null;
         dexPromises.push(name1 ? getDexId(name1) : Promise.resolve(null));
         dexPromises.push(name2 ? getDexId(name2) : Promise.resolve(null));
-        // getPokemonTypes returns [primaryType, secondaryType|null]
         typePromises.push(name1 ? getPokemonTypes(name1) : Promise.resolve([null, null]));
         typePromises.push(name2 ? getPokemonTypes(name2) : Promise.resolve([null, null]));
       }
-      const dexIds = await Promise.all(dexPromises);
+
+      const dexResults = await Promise.all(dexPromises);
       const typeResults = await Promise.all(typePromises);
 
-      pairs.forEach((pair, idx) => {
-        const dexId1 = dexIds[idx * 2];
-        const dexId2 = dexIds[idx * 2 + 1];
-        // typeResults[idx*2] = [primary1, secondary1], typeResults[idx*2+1] = [primary2, secondary2]
-        const types1 = typeResults[idx * 2];
-        const types2 = typeResults[idx * 2 + 1];
+      for (let i = 0; i < pairs.length; i++) {
+        const pair = pairs[i];
+        const dex1 = dexResults[i * 2];
+        const dex2 = dexResults[i * 2 + 1];
+        const types1 = typeResults[i * 2];
+        const types2 = typeResults[i * 2 + 1];
 
-        const isSwapped = !!pair.swappedAt;
-        const isSolo = pair.isSolo;
+        // Build gradient from types
+        const c1 = types1[0] ? (TYPE_COLORS[types1[0]] || '#888') : '#888';
+        const c2 = pair.isSolo
+          ? (types1[1] ? (TYPE_COLORS[types1[1]] || '#888') : c1)
+          : (types2[0] ? (TYPE_COLORS[types2[0]] || '#888') : '#888');
 
-        // Build the circle
+        // Create circle
         const circle = document.createElement('div');
         circle.className = 'pair-circle';
-        if (isSwapped) circle.classList.add('swapped');
-        if (isSolo) circle.classList.add('solo');
-        circle.dataset.origin = pair.originKey;
+        circle.style.background = `linear-gradient(135deg, ${c1}88 0%, transparent 50%, ${c2}88 100%)`;
+        circle.style.backdropFilter = 'blur(16px)';
+        circle.style.webkitBackdropFilter = 'blur(16px)';
 
-        // ── Type-colored background ──
-        // Both Soul Link and Solo Nuzlocke use the same diagonal split
-        // gradient. The difference is which types feed into c1 and c2:
-        //
-        // Soul Link: c1 = Player 1's primary type, c2 = Player 2's primary type.
-        // Solo:      c1 = the single Pokémon's primary type,
-        //            c2 = the single Pokémon's secondary type (or primary if mono-type).
-        //
-        // This gives solo circles the same polished diagonal look as pairs.
-        let c1, c2;
+        // Route name tooltip
+        circle.title = pair.routeName;
 
-        if (isSolo) {
-          // Solo Nuzlocke: use primary → secondary (or primary → primary if mono-type)
-          const primary = types1?.[0] || null;
-          const secondary = types1?.[1] || primary; // fallback to primary if mono-type
-          c1 = TYPE_COLORS[primary] || 'rgba(255,255,255,0.08)';
-          c2 = TYPE_COLORS[secondary] || 'rgba(255,255,255,0.08)';
-        } else {
-          // Soul Link: use Player 1's primary → Player 2's primary
-          const type1 = types1?.[0] || null;
-          const type2 = types2?.[0] || null;
-          c1 = TYPE_COLORS[type1] || 'rgba(255,255,255,0.08)';
-          c2 = TYPE_COLORS[type2] || 'rgba(255,255,255,0.08)';
-        }
+        if (pair.isSolo) {
+          // --- Solo Nuzlocke rendering ---
+          const sprite = document.createElement('img');
+          sprite.className = 'circle-sprite solo';
+          sprite.alt = pair.p1.name;
+          const url = buildSpriteUrl(dex1, pair.p1.shiny, FEMALE);
+          if (url) sprite.src = url;
+          sprite.loading = 'lazy';
+          circle.appendChild(sprite);
 
-        // Same diagonal gradient for both modes — no special CSS needed.
-        circle.style.background = `
-          linear-gradient(135deg,
-            rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 50%,
-            rgba(255,255,255,0.18) 100%
-          ),
-          linear-gradient(135deg,
-            ${c1}AA 0%, ${c1}66 40%,
-            ${c2}66 60%, ${c2}AA 100%
-          )
-        `;
-
-        // ── Sprites ──
-        // Solo mode: single sprite, centered, larger (class .solo).
-        // Soul Link: two sprites offset diagonally (classes .p1 / .p2).
-        if (pair.p1) {
-          const spriteUrl1 = buildSpriteUrl(dexId1, pair.p1.shiny, FEMALE);
-          if (spriteUrl1) {
-            const img1 = document.createElement('img');
-            img1.className = isSolo ? 'circle-sprite solo' : 'circle-sprite p1';
-            img1.src = spriteUrl1;
-            img1.alt = pair.p1.name || 'pokemon';
-            img1.loading = 'lazy';
-            img1.onerror = function() { this.style.display = 'none'; };
-            circle.appendChild(img1);
-          }
-        }
-
-        // Sprite 2 (player 2) — only in Soul Link mode
-        if (pair.p2 && !isSolo) {
-          const spriteUrl2 = buildSpriteUrl(dexId2, pair.p2.shiny, FEMALE);
-          if (spriteUrl2) {
-            const img2 = document.createElement('img');
-            img2.className = 'circle-sprite p2';
-            img2.src = spriteUrl2;
-            img2.alt = pair.p2.name || 'pokemon';
-            img2.loading = 'lazy';
-            img2.onerror = function() { this.style.display = 'none'; };
-            circle.appendChild(img2);
-          }
-        }
-
-        // ── Names ──
-        const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
-        if (isSolo) {
-          // Solo mode: single name, centered at bottom (class .pair-name-solo)
-          const name = pair.p1 ? cap(pair.p1.nickname || pair.p1.name || '?') : '?';
-          const nameEl = document.createElement('span');
+          const nameEl = document.createElement('div');
           nameEl.className = 'pair-name-solo';
-          nameEl.textContent = name;
+          nameEl.textContent = pair.p1.nickname || pair.p1.name;
           circle.appendChild(nameEl);
+
         } else {
-          // Soul Link mode: two names, top & bottom (classes .pair-name-primary / .pair-name-secondary)
-          const name1 = pair.p1 ? cap(pair.p1.nickname || pair.p1.name || '?') : '—';
-          const name2 = pair.p2 ? cap(pair.p2.nickname || pair.p2.name || '?') : '—';
+          // --- Soul Link rendering ---
+          const sprite1 = document.createElement('img');
+          sprite1.className = 'circle-sprite p1';
+          sprite1.alt = pair.p1.name;
+          const url1 = buildSpriteUrl(dex1, pair.p1.shiny, FEMALE);
+          if (url1) sprite1.src = url1;
+          sprite1.loading = 'lazy';
+          circle.appendChild(sprite1);
 
-          const primaryName = document.createElement('span');
-          primaryName.className = 'pair-name-primary';
-          primaryName.textContent = name1;
-          circle.appendChild(primaryName);
+          const sprite2 = document.createElement('img');
+          sprite2.className = 'circle-sprite p2';
+          sprite2.alt = pair.p2.name;
+          const url2 = buildSpriteUrl(dex2, pair.p2.shiny, FEMALE);
+          if (url2) sprite2.src = url2;
+          sprite2.loading = 'lazy';
+          circle.appendChild(sprite2);
 
-          const secondaryName = document.createElement('span');
-          secondaryName.className = 'pair-name-secondary';
-          secondaryName.textContent = `& ${name2}`;
-          circle.appendChild(secondaryName);
+          const name1El = document.createElement('div');
+          name1El.className = 'pair-name-primary';
+          name1El.textContent = pair.p1.nickname || pair.p1.name;
+          circle.appendChild(name1El);
+
+          const name2El = document.createElement('div');
+          name2El.className = 'pair-name-secondary';
+          name2El.textContent = pair.p2.nickname || pair.p2.name;
+          circle.appendChild(name2El);
         }
 
         pairsContainer.appendChild(circle);
-      });
-
-      // ── Dynamic scale based on pair count ──
-      // If there are 6+ circles, shrink the scale from 1.5 to 1.25
-      // to reduce the horizontal footprint and prevent overflow.
-      // The CSS default is scale(1.5); we override it inline here.
-      const circleCount = pairsContainer.querySelectorAll('.pair-circle').length;
-      pairsContainer.style.transform = circleCount >= 6
-        ? 'scale(1.25) translate(0px, -4em)'
-        : 'scale(1.5) translate(0px, -4em)';
-    }
-
-    // ============================================================
-    //  ADMIN PANEL
-    //  Shows swap-simulation buttons for Soul Link pairs only.
-    //  Solo Nuzlocke pairs are excluded (swapping is meaningless).
-    // ============================================================
-    function setupAdminPanel(pairs) {
-      if (!IS_ADMIN) {
-        adminPanel.classList.remove('active');
-        return;
-      }
-      adminPanel.classList.add('active');
-      adminButtons.innerHTML = '';
-
-      for (const pair of pairs) {
-        // Skip solo pairs — swapping doesn't apply to single-Pokémon routes
-        if (pair.isSolo) continue;
-
-        const btn = document.createElement('button');
-        btn.className = 'admin-swap-btn';
-        btn.textContent = `⤾ ${pair.routeName}`;
-        btn.dataset.origin = pair.originKey;
-        btn.setAttribute('aria-label', `Toggle swap for ${pair.routeName}`);
-
-        btn.addEventListener('click', () => {
-          // Toggle swap state locally (no Firebase needed)
-          const wasSwapped = !!pair.swappedAt;
-          pair.swappedAt = wasSwapped ? null : Date.now();
-
-          // Re-render just this circle
-          loadFromRunTxt();
-
-          btn.textContent = wasSwapped ? `⤾ ${pair.routeName}` : '⤾ Swapped!';
-          setTimeout(() => {
-            btn.textContent = `⤾ ${pair.routeName}`;
-          }, 2000);
-        });
-
-        adminButtons.appendChild(btn);
       }
     }
 
     // ============================================================
-    //  UI HELPERS
+    //  UI STATE HELPERS
     // ============================================================
-    function showLoading() {
-      loadingEl.classList.add('active');
-      errorEl.classList.remove('active');
-      emptyEl.classList.remove('active');
-      pairsContainer.style.display = 'none';
-    }
 
-    function showError(msg) {
-      loadingEl.classList.remove('active');
-      errorEl.classList.add('active');
-      emptyEl.classList.remove('active');
-      pairsContainer.style.display = 'none';
-      errorMessage.textContent = msg || 'Unknown error';
-    }
-
-    function showEmpty() {
-      loadingEl.classList.remove('active');
-      errorEl.classList.remove('active');
-      emptyEl.classList.add('active');
-      pairsContainer.style.display = 'none';
-    }
-
+    /** Hide all state overlays. */
     function hideAllStates() {
       loadingEl.classList.remove('active');
       errorEl.classList.remove('active');
       emptyEl.classList.remove('active');
+      pairsContainer.style.display = 'none';
+    }
+
+    /** Show loading state. */
+    function showLoading() {
+      hideAllStates();
+      loadingEl.classList.add('active');
+    }
+
+    /**
+     * Show error state with a message.
+     * @param {string} msg - Error description.
+     */
+    function showError(msg) {
+      hideAllStates();
+      errorEl.classList.add('active');
+      errorMessage.textContent = msg;
+    }
+
+    /** Show empty state (no pairings found). */
+    function showEmpty() {
+      hideAllStates();
+      emptyEl.classList.add('active');
     }
 
     // ============================================================
     //  GOOGLE FONT LOADER
-    //  @section font-loader
+    //  @section fonts
     //
-    //  If `?font=FontName` was provided in the URL, dynamically inject
-    //  a <link> tag to load that font from Google Fonts, then update
-    //  the body's font-family once loaded.
-    //
-    //  This runs before the overlay data fetch so the font is ready
-    //  (or at least loading) by the time the first render happens.
+    //  If `?font=FontName` is specified in the URL, inject a <link>
+    //  tag into <head> to load the font from Google Fonts.
+    //  Once loaded, update the CSS custom property.
     // ============================================================
 
     /**
-     * Dynamically load a Google Font and apply it as the primary font.
+     * Load a Google Font dynamically by injecting a <link> tag.
+     * Falls back to FLURO if the font fails to load.
      *
-     * Injects a `<link rel="stylesheet">` into `<head>` pointing to the
-     * Google Fonts CSS2 API. On load, updates `document.body.style.fontFamily`
-     * so all text uses the chosen font with FLURO as fallback.
-     *
-     * If `?font=` was not specified, this function does nothing.
-     *
-     * @function loadGoogleFont
-     * @returns {void}
-     *
-     * @example
-     *   // URL: ?attempt4&font=Press+Start+2P
-     *   loadGoogleFont();
-     *   // → <link href="...Press+Start+2P:wght@400;600;700..." rel="stylesheet">
-     *   // → body font-family: 'Press Start 2P', 'FLURO', sans-serif
+     * @param {string} fontName - Google Font family name (e.g. "Press+Start+2P").
+     * @param {string} weights - Semicolon-separated font weights (e.g. "400;600;700").
+     * @returns {Promise<void>} Resolves when the font has loaded (or failed).
      */
-    function loadGoogleFont() {
-      if (!FONT_NAME) return;
+    function loadGoogleFont(fontName, weights) {
+      return new Promise((resolve) => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName.replace(/\+/g, ' '))}:wght@${weights}&display=swap`;
+        link.onload = () => {
+          document.documentElement.style.setProperty('--overlay-font', `'${fontName.replace(/\+/g, ' ')}', 'FLURO', sans-serif`);
+          resolve();
+        };
+        link.onerror = () => {
+          console.warn(`[Overlay] Failed to load font "${fontName}", using FLURO fallback`);
+          resolve();
+        };
+        document.head.appendChild(link);
+      });
+    }
 
-      // Build the Google Fonts URL.
-      // Uses the CSS2 API which supports variable weights via :wght@ syntax.
-      // encodeURIComponent handles special characters in font names.
-      const fontFamily = FONT_NAME.replace(/\+/g, ' ');
-      const href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontFamily)}:wght@${FONT_WEIGHTS}&display=swap`;
+    // ============================================================
+    //  POLLING - auto-refresh for live editing
+    //  @section polling
+    //
+    //  Polls localStorage every POLL_INTERVAL_MS for changes.
+    //  This allows the overlay to update live when the user edits
+    //  the YAML in index.html without needing to refresh OBS.
+    // ============================================================
 
-      // Inject the stylesheet link
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = href;
+    /**
+     * Start polling for data changes.
+     * Checks localStorage first, then falls back to /run.yaml.
+     */
+    function startPolling() {
+      if (refreshInterval) clearInterval(refreshInterval);
 
-      // Once the font is loaded, inject a <style> tag that overrides
-      // all FLURO-specific font-family declarations with !important.
-      //
-      // We cannot just set document.body.style.fontFamily because every
-      // text element in the CSS has its own explicit `font-family: 'FLURO'`
-      // declaration (e.g. .pair-name-primary, .pair-name-solo, #loading).
-      // Those class-level rules have higher specificity than the body's
-      // inherited font-family, so the Google Font would never apply to
-      // child elements without !important.
-      link.onload = () => {
-        const style = document.createElement('style');
-        style.textContent = `
-          body,
-          .pair-name-primary,
-          .pair-name-secondary,
-          .pair-name-solo,
-          #loading,
-          #error,
-          #empty,
-          .admin-label,
-          .admin-swap-btn {
-            font-family: '${fontFamily}', 'FLURO', 'Segoe UI', sans-serif !important;
+      refreshInterval = setInterval(async () => {
+        try {
+          const lsYaml = loadFromLocalStorage();
+          if (lsYaml) {
+            await parseAndRender(lsYaml, 'localStorage');
+          } else {
+            // Fallback: re-fetch /run.yaml
+            const res = await fetch('/run.yaml');
+            if (res.ok) {
+              const text = await res.text();
+              await parseAndRender(text, '/run.yaml');
+            }
           }
-        `;
-        document.head.appendChild(style);
-        console.log(`[Overlay] Google Font loaded: ${fontFamily}`);
-      };
-
-      link.onerror = () => {
-        console.warn(`[Overlay] Failed to load Google Font: ${fontFamily}. Falling back to FLURO.`);
-      };
-
-      document.head.appendChild(link);
+        } catch (e) {
+          // Silently ignore polling errors to avoid console spam in OBS
+        }
+      }, POLL_INTERVAL_MS);
     }
 
     // ============================================================
     //  INIT
+    //  @section init
     // ============================================================
-    function init() {
-      // Load Google Font (if specified via ?font=) before fetching data
-      loadGoogleFont();
 
-      // Show overlay with a small delay for smooth entrance
-      setTimeout(() => {
-        overlayEl.classList.remove('hidden');
-      }, 300);
+    (async function init() {
+      showLoading();
+
+      // Load Google Font if specified
+      if (FONT_NAME) {
+        await loadGoogleFont(FONT_NAME, FONT_WEIGHTS);
+      }
 
       // Initial load
-      loadFromRunTxt();
+      await loadFromRunTxt();
 
-      // Auto-refresh every 3 seconds (for OBS / live editing)
-      refreshInterval = setInterval(loadFromRunTxt, 3000);
-    }
+      // Show overlay with fade-in
+      overlayEl.classList.remove('hidden');
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
-    } else {
-      init();
-    }
+      // Start polling for live updates
+      startPolling();
+    })();
   </script>
+
 </body>
 </html>

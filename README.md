@@ -1,52 +1,50 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="public/favicon/favicon.svg">
-    <img src="public/favicon/favicon.svg" width="48" height="48" alt="Nuzlocke Overlay logo">
-  </picture>
-</p>
-
-<h1 align="center">Nuzlocke Overlay</h1>
+<h1 align="center">
+  <img src="public/favicon/favicon.svg" width="38" height="38" alt="" style="vertical-align:middle;margin-right:10px;" />
+  Nuzlocke Overlay
+</h1>
 
 <p align="center">
-  A <strong>standalone OBS Browser Source</strong> for displaying live <strong>Nuzlocke</strong> pairings —<br>
-  supports <strong>Soul Link</strong> (two players, linked pairs) and <strong>Solo Nuzlocke</strong> (single player) runs.
+  A <strong>standalone OBS Browser Source</strong> for displaying live <strong>Nuzlocke</strong> pairings.<br>
+  Supports <strong>Solo Nuzlocke</strong> (single player) and <strong>Soul Link</strong> (two players, linked pairs) runs.
 </p>
 
 <p align="center">
-  <a href="https://nuzlocke-overlay.pages.dev" target="_blank">🌐 Live Demo</a>
+  <a href="https://nuzlocke-overlay.noverraz.tv" target="_blank">nuzlocke-overlay.noverraz.tv</a>
   &nbsp;·&nbsp;
-  <a href="#quick-start">🚀 Quick Start</a>
+  <a href="#quick-start">Quick Start</a>
   &nbsp;·&nbsp;
-  <a href="#obs-setup">📺 OBS Setup</a>
+  <a href="#obs-setup">OBS Setup</a>
 </p>
 
 ---
 
 ## Overview
 
-Whether you're running a **Soul Link** with a friend or a **Solo Nuzlocke** on your own, this overlay shows your Pokémon pairings live on stream. It works as a **Browser Source** in OBS — no plugins, no extra software.
+Whether you are running a **Solo Nuzlocke** on your own or a **Soul Link** with a friend, this overlay shows your Pokemon pairings live on stream. It works as a **Browser Source** in OBS -- no plugins, no extra software.
 
-Includes a **web-based setup page** where you can edit your pairings in-browser. Your data is saved in localStorage, so it persists when you come back.
+Includes a **web-based setup page** where you can edit your pairings in-browser. Your data is saved in localStorage, so it persists when you come back. **Edit the text any time and the overlay updates live** -- no need to refresh or restart OBS.
+
+The site is hosted at **[nuzlocke-overlay.noverraz.tv](https://nuzlocke-overlay.noverraz.tv)** -- just visit, type your pairings, and copy the overlay URL.
 
 ---
 
 ## Quick Start
 
-### 🌐 Online (Recommended)
+### Online (Recommended)
 
 Just visit the live site:
 
 ```
-https://nuzlocke-overlay.pages.dev
+https://nuzlocke-overlay.noverraz.tv
 ```
 
 1. Type your pairings in the YAML editor (auto-saves to localStorage)
 2. Click **"Copy Overlay URL"**
 3. Paste the URL into OBS as a Browser Source
 
-No server, no installation — everything runs in your browser.
+No server, no installation -- everything runs in your browser.
 
-### 💻 Local Development
+### Local Development
 
 ```bash
 node server.js
@@ -58,25 +56,20 @@ Then open `http://localhost:3000/` in your browser.
 
 ## How It Works
 
-### Option A: Use the Web Setup Page (Recommended)
+### Use the Web Setup Page (Recommended)
 
-1. Open the setup page — either [online](https://nuzlocke-overlay.pages.dev) or locally at `http://localhost:3000/`
-2. Type your pairings in the YAML editor — it auto-saves every keystroke
+1. Open the setup page -- either [online](https://nuzlocke-overlay.noverraz.tv) or locally at `http://localhost:3000/`
+2. Type your pairings in the YAML editor -- it auto-saves every keystroke
 3. Click **"Copy Overlay URL"** to copy the link
 4. Paste the link into OBS as a Browser Source
 
-Your data is saved in your browser's localStorage. Come back anytime — it'll still be there.
+Your data is saved in your browser's localStorage. Come back anytime -- it will still be there.
 
-### Option B: Edit `public/run.yaml` Directly
+**Live editing:** While the overlay is open in OBS, you can go back to the setup page, edit the text, and the overlay will update automatically within a few seconds. No need to refresh the browser source.
+
+### Edit `public/run.yaml` Directly
 
 For local development or if you prefer editing files directly, edit `public/run.yaml` and the overlay will auto-update.
-
-### Option C: Data-Embedded URL
-
-Click **"Copy URL (data embedded)"** on the setup page to get a URL that contains your entire YAML data encoded in the URL itself. This is useful if:
-- You want a fully portable link (no localStorage dependency)
-- You're sharing the overlay with someone else
-- OBS doesn't have access to the same localStorage
 
 ---
 
@@ -84,25 +77,7 @@ Click **"Copy URL (data embedded)"** on the setup page to get a URL that contain
 
 The overlay supports **two modes**, auto-detected per route:
 
-#### Soul Link Mode (two Pokémon per route)
-
-```yaml
-ATTEMPT 4
-
-- Route 201
-Nightfall & Daybreak
-Piplup (Shiny) & Piplup
-
-- Route 202 (DEAD)
-Biefstuk & Kipstuk
-Bidoof & Starly
-
-- Lake Verity
-Royalty & Tyranny
-Starly & Bidoof
-```
-
-#### Solo Nuzlocke Mode (one Pokémon per route)
+#### Solo Nuzlocke Mode (one Pokemon per route)
 
 ```yaml
 ATTEMPT 4
@@ -120,14 +95,32 @@ Royalty
 Starly
 ```
 
+#### Soul Link Mode (two Pokemon per route)
+
+```yaml
+ATTEMPT 4
+
+- Route 201
+Nightfall & Daybreak
+Piplup (Shiny) & Piplup
+
+- Route 202 (DEAD)
+Biefstuk & Kipstuk
+Bidoof & Starly
+
+- Lake Verity
+Royalty & Tyranny
+Starly & Bidoof
+```
+
 **Format rules:**
-- **Line 1:** Title — becomes the URL slug (e.g. `"ATTEMPT 4"` → `?attempt4`)
+- **Line 1:** Title -- becomes the URL slug (e.g. `"ATTEMPT 4"` becomes `?attempt4`)
 - **`- Route Name`:** Starts a new pairing
-- **Next line:** Nicknames — `Player1 & Player2` (Soul Link) or single nickname (Solo)
-- **Next line:** Species — `Player1 & Player2` (Soul Link) or single species (Solo)
-  - **Auto-detection:** If the species line contains `&`, it's Soul Link mode. Otherwise, it's Solo mode.
-- **`(DEAD)` or `(BOX)`** on a route line → hides that pairing
-- **`(Shiny)`** after a species → shows shiny sprite for that Pokémon
+- **Next line:** Nicknames -- single nickname (Solo) or `Player1 & Player2` (Soul Link)
+- **Next line:** Species -- single species (Solo) or `Player1 & Player2` (Soul Link)
+  - **Auto-detection:** If the species line contains `&`, it is Soul Link mode. Otherwise, it is Solo mode.
+- **`(DEAD)` or `(BOX)`** on a route line hides that pairing
+- **`(Shiny)`** after a species shows shiny sprite for that Pokemon
 - Blank lines are ignored
 
 **Comments:** Lines starting with `#` are ignored:
@@ -139,7 +132,7 @@ Biefstuk & Kipstuk
 Bidoof & Starly
 ```
 
-**Mixed mode:** You can mix Soul Link and Solo routes in the same file. Each route is auto-detected independently.
+**Mixed mode:** You can mix Solo and Soul Link routes in the same file. Each route is auto-detected independently.
 
 ---
 
@@ -160,11 +153,9 @@ Add a **Browser** source with:
 
 | Param | Example | Effect |
 |---|---|---|
-| `?data=...` | `?data=QV RURFTVBU...` | Base64-encoded YAML data (auto-generated by setup page) |
-| `?admin=true` | `?admin=true` | Shows swap simulation buttons (Soul Link pairs only) |
 | `?female=true` | `?female=true` | Shows female variant sprites |
 | `?art=home` | `?art=home` | Uses PokeAPI "home" artwork instead of "official-artwork" |
-| `?font=FontName` | `?font=Press+Start+2P` | Replace FLURO with any Google Font (spaces → `+`) |
+| `?font=FontName` | `?font=Press+Start+2P` | Replace default font with any Google Font (spaces become `+`) |
 | `?font-weight=...` | `?font=Rubik&font-weight=300;400;600;700` | Font weights to load (semicolon-separated, default `400;600;700`) |
 
 ### Font Customization
@@ -185,9 +176,8 @@ The font is loaded dynamically via the Google Fonts CSS2 API. FLURO is always ke
 
 The overlay reads data from these sources, in order:
 
-1. **localStorage** (key `nuzlocke-yaml`) — set by the setup page (`index.html`)
-2. **`?data=` URL parameter** — base64-encoded YAML for portable links
-3. **`/run.yaml`** — fallback for local development
+1. **localStorage** (key `nuzlocke-yaml`) -- set by the setup page (`index.html`)
+2. **`/run.yaml`** -- fallback for local development
 
 ---
 
@@ -196,12 +186,12 @@ The overlay reads data from these sources, in order:
 ```
 nuzlocke-overlay/
 ├── public/
-│   ├── index.html       ← Setup page (YAML editor, URL generator)
-│   ├── overlay.html     ← OBS Browser Source (the overlay)
-│   ├── run.yaml         ← Fallback pairing data for local dev
-│   ├── fonts/           ← FLURO font files
-│   └── favicon/         ← Site icons
-├── server.js            ← Static file server (Node.js, zero deps)
+│   ├── index.html       Setup page (YAML editor, URL generator)
+│   ├── overlay.html     OBS Browser Source (the overlay)
+│   ├── run.yaml         Fallback pairing data for local dev
+│   ├── fonts/           FLURO font files
+│   └── favicon/         Site icons
+├── server.js            Static file server (Node.js, zero deps)
 ├── package.json
 ├── .gitignore
 └── README.md
@@ -209,32 +199,8 @@ nuzlocke-overlay/
 
 ---
 
-## Deployment
-
-### Cloudflare Pages (Recommended)
-
-1. Push your code to GitHub
-2. Connect Cloudflare Pages to your repo
-3. Set **Build output directory** to **`public`**
-4. Leave **Build command** empty
-5. Deploy!
-
-Your site will be live at `https://nuzlocke-overlay.pages.dev` (or your custom domain).
-
-### Any Static Host
-
-Upload the `public/` folder to any static host (Netlify, Vercel, GitHub Pages, etc.) and ensure `index.html` is served at the root.
-
-No server-side code is needed — everything runs in the browser.
-
----
-
 ## License
 
 [MIT](LICENSE)
 
-**Original work** Copyright (c) 2021 Jessica Tang ([@jynnie](https://github.com/jynnie)) — [soullocke](https://github.com/jynnie/soullocke)
-
-**Modifications** Copyright (c) 2025 Luuk Noverraz
-
-This project is a fork of the original [soullocke](https://github.com/jynnie/soullocke) by Jessica Tang, stripped down to a standalone overlay and extended with solo Nuzlocke support, swap simulation, Google Font customization, `.yaml` file format with comment support, web-based YAML editor with localStorage persistence, data-embedded URLs, and OBS-optimized rendering.
+Copyright (c) 2025 Luuk Noverraz
