@@ -1,10 +1,10 @@
 <h1 align="center">
-  <img src="public/favicon/favicon.svg" width="38" height="38" alt="" style="vertical-align:middle;margin-right:10px;" />
+  <img src="public/favicon/favicon.svg" width="38" height="38" alt="" style="vertical-align:bottom;margin-right:10px;" />
   Nuzlocke Overlay
 </h1>
 
 <p align="center">
-  A <strong>lightweight, standalone OBS Browser Source</strong> for displaying live <strong>Nuzlocke</strong> pairings.<br>
+  A <strong>lightweight, standalone OBS Browser Source</strong> for displaying live <strong>Nuzlocke</strong> teams.<br>
   Supports <strong>Solo Nuzlocke</strong> (single player) and <strong>Soul Link</strong> (two players, linked pairs) runs.
 </p>
 
@@ -20,9 +20,9 @@
 
 ## Overview
 
-Whether you are running a **Solo Nuzlocke** on your own or a **Soul Link** with a friend, this overlay shows your Pokemon pairings live on stream. It works as a **Browser Source** in OBS -- no plugins, no extra software.
+Whether you are running a **Solo Nuzlocke** on your own or a **Soul Link** with a friend, this overlay shows your Pokémon team live on stream. It works as a **Browser Source** in OBS. No plugins or extra software required.
 
-Includes a **web-based setup page** where you can edit your pairings in-browser. Your data is saved in localStorage, so it persists when you come back. **Edit the text any time and the overlay updates live** -- no need to refresh or restart OBS.
+Includes a **web-based setup page** where you can edit your pairings in-browser. Your data is saved in localStorage, so it persists when you come back. **Edit the text any time and the overlay updates live**, no need to refresh or restart OBS.
 
 The site is hosted at **[nuzlocke-overlay.noverraz.tv](https://nuzlocke-overlay.noverraz.tv)** -- just visit, type your pairings, and copy the overlay URL.
 
@@ -42,7 +42,7 @@ https://nuzlocke-overlay.noverraz.tv
 2. Click **"Copy Overlay URL"**
 3. Paste the URL into OBS as a Browser Source
 
-No server, no installation -- everything runs in your browser.
+No server, no installation, everything runs in your browser.
 
 ### Local Development
 
@@ -58,12 +58,12 @@ Then open `http://localhost:3000/` in your browser.
 
 ### Use the Web Setup Page (Recommended)
 
-1. Open the setup page -- either [online](https://nuzlocke-overlay.noverraz.tv) or locally at `http://localhost:3000/`
+1. Open the setup page: either [online](https://nuzlocke-overlay.noverraz.tv) or locally at `http://localhost:3000/`
 2. Type your pairings in the YAML editor -- it auto-saves every keystroke
 3. Click **"Copy Overlay URL"** to copy the link
 4. Paste the link into OBS as a Browser Source
 
-Your data is saved in your browser's localStorage. Come back anytime -- it will still be there.
+Your data is saved in your browser's localStorage. Come back anytime and it will still be there.
 
 **Live editing:** While the overlay is open in OBS, you can go back to the setup page, edit the text, and the overlay will update automatically within a few seconds. No need to refresh the browser source.
 
@@ -111,8 +111,8 @@ Starly & Bidoof
 
 **Format rules:**
 - **`- Route Name`:** Starts a new pairing
-- **Next line:** Nicknames -- single nickname (Solo) or `Player1 & Player2` (Soul Link)
-- **Next line:** Species -- single species (Solo) or `Player1 & Player2` (Soul Link)
+- **Next line:** Nicknames: single nickname (Solo) or `Player1 & Player2` (Soul Link)
+- **Next line:** Species: single species (Solo) or `Player1 & Player2` (Soul Link)
   - **Auto-detection:** If the species line contains `&`, it is Soul Link mode. Otherwise, it is Solo mode.
 - **`(DEAD)` or `(BOX)`** on a route line hides that pairing
 - **`(Shiny)`** after a species shows shiny sprite for that Pokemon
@@ -140,7 +140,6 @@ Add a **Browser** source with:
 | URL | The URL you copied from the setup page |
 | Width | Your stream canvas width (e.g. 1920) |
 | Height | Your stream canvas height (e.g. 1080) |
-| Background | Transparent |
 
 ---
 
@@ -178,7 +177,7 @@ The overlay automatically normalizes common name formats so you don't need to kn
 | `Type: Null` | `type-null` |
 | `Nidoran♀` | `nidoran-f` |
 
-Just type the name naturally -- the overlay handles the conversion.
+Just type the name naturally and the overlay should handle the conversion.
 
 ### Font Customization
 
