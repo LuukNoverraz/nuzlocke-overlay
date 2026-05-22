@@ -669,6 +669,10 @@ Starly & Bidoof"></textarea>
           <option value="1-5">Gen 1-5</option>
         </select>
       </div>
+      <div class="typing-selector" style="margin-left:0">
+        <label for="param-max">Max Pokémon</label>
+        <input type="number" id="param-max" min="1" max="99" value="6" style="font-family:'Quicksand',sans-serif;font-size:0.8rem;padding:8px 14px;border-radius:10px;border:1px solid var(--border);background:var(--card-bg);color:var(--text);outline:none;width:70px;transition:border-color 0.2s ease" />
+      </div>
     </div>
   </div>
 
@@ -813,6 +817,7 @@ Piplup (Shiny)         <span class="comment-hint">shows shiny sprite</span></pre
   const paramFont = document.getElementById('param-font');
   const paramHome = document.getElementById('param-home');
   const paramTyping = document.getElementById('param-typing');
+  const paramMax = document.getElementById('param-max');
 
   // ============================================================
   //  CONSTANTS
@@ -953,6 +958,12 @@ Geodude & Psyduck`;
       parts.push(`gen=${typing}`);
     }
 
+    // Max Pokémon param (only include if not the default 6)
+    const maxVal = parseInt(paramMax.value, 10);
+    if (!isNaN(maxVal) && maxVal !== 6) {
+      parts.push(`max=${maxVal}`);
+    }
+
     return parts.length > 0 ? '?' + parts.join('&') : '';
   }
 
@@ -1044,6 +1055,7 @@ Geodude & Psyduck`;
   paramFont.addEventListener('input', updateUrlDisplay);
   paramHome.addEventListener('change', updateUrlDisplay);
   paramTyping.addEventListener('change', updateUrlDisplay);
+  paramMax.addEventListener('input', updateUrlDisplay);
 
   // ============================================================
   //  INIT

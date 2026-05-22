@@ -1072,6 +1072,12 @@
       pairsContainer.innerHTML = '';
       if (pairs.length === 0) return;
 
+      // Apply max-pairs limit from URL param (default 6)
+      const maxPairs = parseInt(urlParams.get('max') || '6', 10);
+      if (maxPairs > 0 && pairs.length > maxPairs) {
+        pairs = pairs.slice(0, maxPairs);
+      }
+
       // Batch resolve dex IDs and type colors.
       const dexPromises = [];
       const typePromises = [];
