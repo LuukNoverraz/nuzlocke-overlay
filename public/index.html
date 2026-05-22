@@ -903,6 +903,17 @@ Geodude & Psyduck`;
       saveIndicator.textContent = 'auto-saved';
       saveIndicator.className = 'save-indicator saved';
       updateUrlDisplay();
+
+      // POST the YAML data to the server so it writes to run.yaml.
+      // The overlay (including OBS Browser Source) polls run.yaml
+      // every second and will pick up the change via If-Modified-Since.
+      fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: editor.value,
+      }).catch(() => {
+        // Server might not be running (e.g. live site), that's fine
+      });
     }, 400);
   }
 
@@ -946,11 +957,18 @@ Geodude & Psyduck`;
   }
 
   /**
-   * Build the overlay URL (relies on localStorage).
+   * Build the overlay URL with YAML data embedded in the hash fragment.
+   * The overlay reads this hash instead of relying on localStorage
+   * (which is isolated per browser profile and doesn't work in OBS).
+   *
+   * Format: /overlay.html#base64:base64encodeddata
+   *
    * @returns {string}
    */
   function buildOverlayUrl() {
-    return getBaseUrl() + buildParamString();
+    const yamlData = editor.value;
+    const encoded = btoa(unescape(encodeURIComponent(yamlData)));
+    return getBaseUrl() + buildParamString() + '#base64:' + encoded;
   }
 
   /** Update the URL display text. */

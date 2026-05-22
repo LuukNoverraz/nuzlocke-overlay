@@ -921,12 +921,15 @@
     }
 
     // ============================================================
-    //  DATA SOURCE - localStorage or /run.yaml fallback
+    //  DATA SOURCE - URL hash, BroadcastChannel, localStorage, /run.yaml
     //  @section loader
     //
     //  Priority:
-    //    1. localStorage key "nuzlocke-yaml" (set by index.html)
-    //    2. /run.yaml (fallback for local dev)
+    //    1. URL hash fragment (set by index.html when copying URL)
+    //       Format: #base64:base64encodeddata
+    //    2. BroadcastChannel 'nuzlocke-overlay' (live updates from index.html)
+    //    3. localStorage key "nuzlocke-yaml" (set by index.html)
+    //    4. /run.yaml (fallback for local dev)
     // ============================================================
 
     /** @const {string} localStorage key shared with index.html */
@@ -945,7 +948,7 @@
      * Polling interval in milliseconds.
      * @const {number}
      */
-    const POLL_INTERVAL_MS = 3000;
+    const POLL_INTERVAL_MS = 1000;
 
     /**
      * Try to load YAML from localStorage (set by index.html).
@@ -957,6 +960,26 @@
         if (saved && saved.trim()) return saved.trim();
       } catch (e) {
         console.warn('[Overlay] localStorage not available:', e.message);
+      }
+      return null;
+    }
+
+    /**
+     * Try to load YAML from the URL hash fragment.
+     * Format: #base64:base64encodeddata
+     * This is set by index.html when the user copies the overlay URL.
+     *
+     * @returns {string|null} YAML text or null if not found.
+     */
+    function loadFromUrlHash() {
+      try {
+        const hash = window.location.hash;
+        if (!hash || !hash.startsWith('#base64:')) return null;
+        const encoded = hash.slice('#base64:'.length);
+        const decoded = decodeURIComponent(escape(atob(encoded)));
+        if (decoded && decoded.trim()) return decoded.trim();
+      } catch (e) {
+        console.warn('[Overlay] Failed to decode URL hash:', e.message);
       }
       return null;
     }
@@ -1001,21 +1024,29 @@
      * Main load function - tries sources in priority order.
      *
      * Priority:
-     *   1. localStorage key "nuzlocke-yaml" (set by index.html)
-     *   2. /run.yaml (fallback for local dev)
+     *   1. URL hash fragment (set by index.html when copying URL)
+     *   2. localStorage key "nuzlocke-yaml" (set by index.html)
+     *   3. /run.yaml (fallback for local dev)
      *
      * @returns {Promise<void>}
      */
     async function loadFromRunTxt() {
       try {
-        // Priority 1: localStorage
+        // Priority 1: URL hash fragment (works in OBS where localStorage is isolated)
+        const hashYaml = loadFromUrlHash();
+        if (hashYaml) {
+          await parseAndRender(hashYaml, 'URL hash');
+          return;
+        }
+
+        // Priority 2: localStorage
         const lsYaml = loadFromLocalStorage();
         if (lsYaml) {
           await parseAndRender(lsYaml, 'localStorage');
           return;
         }
 
-        // Priority 2: /run.yaml fallback
+        // Priority 3: /run.yaml fallback
         const res = await fetch('/run.yaml');
 
         if (!res.ok) {
@@ -1206,23 +1237,30 @@
 
     /**
      * Start polling for data changes.
-     * Checks localStorage first, then falls back to /run.yaml.
+     * Checks /run.yaml first (the file that gets updated via POST /api/save),
+     * then falls back to localStorage.
+     *
+     * Priority during polling:
+     *   1. /run.yaml — updated by index.html via POST /api/save
+     *      (works in OBS where localStorage is isolated)
+     *   2. localStorage — fallback for same-browser use
      */
     function startPolling() {
       if (refreshInterval) clearInterval(refreshInterval);
 
       refreshInterval = setInterval(async () => {
         try {
+          // Priority 1: /run.yaml (updated by index.html via POST /api/save)
+          const res = await fetch('/run.yaml');
+          if (res.ok) {
+            const text = await res.text();
+            if (await parseAndRender(text, '/run.yaml')) return;
+          }
+
+          // Priority 2: localStorage (fallback for same-browser use)
           const lsYaml = loadFromLocalStorage();
           if (lsYaml) {
             await parseAndRender(lsYaml, 'localStorage');
-          } else {
-            // Fallback: re-fetch /run.yaml
-            const res = await fetch('/run.yaml');
-            if (res.ok) {
-              const text = await res.text();
-              await parseAndRender(text, '/run.yaml');
-            }
           }
         } catch (e) {
           // Silently ignore polling errors to avoid console spam in OBS
@@ -1251,6 +1289,42 @@
 
       // Start polling for live updates
       startPolling();
+
+      // ── BroadcastChannel listener ──────────────────────────────
+      // Listens for live YAML updates from index.html (setup page).
+      // When the user edits YAML in the browser, index.html broadcasts
+      // the data over 'nuzlocke-overlay' channel. The overlay receives
+      // it here and re-renders instantly — no polling needed.
+      // This works across tabs AND in OBS Browser Source (same origin).
+      //
+      // IMPORTANT: When we receive an update, we also update the URL hash
+      // so that if OBS refreshes the browser source (e.g. scene switch
+      // with "Refresh when active" enabled), it reloads with the latest
+      // data instead of the old hash from when the URL was first pasted.
+      try {
+        const channel = new BroadcastChannel('nuzlocke-overlay');
+        channel.addEventListener('message', async (event) => {
+          if (event.data && event.data.type === 'yaml-update' && event.data.data) {
+            console.log('[Overlay] Live update received via BroadcastChannel');
+
+            // Update the URL hash so OBS refreshes with latest data
+            try {
+              const encoded = btoa(unescape(encodeURIComponent(event.data.data)));
+              const newHash = '#base64:' + encoded;
+              if (window.location.hash !== newHash) {
+                window.location.hash = newHash;
+              }
+            } catch (e) {
+              // Hash update is best-effort
+            }
+
+            await parseAndRender(event.data.data, 'BroadcastChannel');
+          }
+        });
+      } catch (e) {
+        // BroadcastChannel not available (e.g. very old OBS Chromium)
+        console.log('[Overlay] BroadcastChannel not available, relying on polling');
+      }
     })();
   </script>
 

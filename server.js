@@ -66,6 +66,37 @@ const server = http.createServer((req, res) => {
   // ── Parse URL ──────────────────────────────────────────────
   let urlPath = req.url.split('?')[0]; // strip query params
 
+  // ── POST /api/save — write YAML data to run.yaml ───────────
+  if (req.method === 'POST' && urlPath === '/api/save') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const yamlPath = path.join(PUBLIC_DIR, 'run.yaml');
+        fs.writeFileSync(yamlPath, body, 'utf-8');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ── CORS headers for local dev ─────────────────────────────
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // ── Parse URL ──────────────────────────────────────────────
   // Serve index.html at root (the setup page)
   if (urlPath === '/') {
     urlPath = '/index.html';

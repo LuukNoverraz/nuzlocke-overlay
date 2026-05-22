@@ -197,8 +197,29 @@ The font is loaded dynamically via the Google Fonts CSS2 API. FLURO is always ke
 
 The overlay reads data from these sources, in order:
 
-1. **localStorage** (key `nuzlocke-yaml`) -- set by the setup page (`index.html`)
-2. **`/run.yaml`** -- fallback for local development
+| Priority | Source | How it works |
+|----------|--------|-------------|
+| 1 | **URL hash** | When you copy the URL, your YAML data is base64-encoded into the URL fragment (`#base64:...`). The overlay decodes it on load. This is the primary method for OBS. |
+| 2 | **`/run.yaml` (polling)** | When you edit YAML on the setup page, it POSTs the data to `/api/save` on the server. The server writes it to `public/run.yaml`. The overlay polls `/run.yaml` every **1 second** with `If-Modified-Since` headers — only fetches when the file actually changes. This works in OBS because both the browser and OBS talk to the same server. |
+| 3 | **localStorage** | Fallback for when you open the overlay in the same browser as the setup page. |
+
+### How live updates work
+
+```
+You type in the setup page (index.html)
+       ↓
+Saves to localStorage (your data persists)
+       ↓
+POSTs YAML to /api/save on the server
+       ↓
+Server writes to public/run.yaml (updates file timestamp)
+       ↓
+Overlay (in OBS) polls /run.yaml every 1 second
+       ↓
+If-Modified-Since detects the change → fetches new data → re-renders
+```
+
+This works because **both** your browser and OBS's Browser Source make HTTP requests to the **same server**. The overlay doesn't need localStorage or BroadcastChannel — it just fetches the file that the server keeps updated.
 
 ---
 
