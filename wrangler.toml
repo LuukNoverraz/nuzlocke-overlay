@@ -1,0 +1,9 @@
+name = "nuzlocke-overlay"
+compatibility_date = "2025-04-01"
+pages_build_output_dir = "public"
+
+# D1 database for session YAML storage
+[[d1_databases]]
+binding = "DB"
+database_name = "nuzlocke-overlay-db"
+database_id = "0adf0d20-db9b-4997-9824-f202e4583634"

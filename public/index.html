@@ -828,6 +828,24 @@ Piplup (Shiny)         <span class="comment-hint">shows shiny sprite</span></pre
   /** @const {string} localStorage key for theme preference */
   const THEME_KEY = 'nuzlocke-theme';
 
+  /** @const {string} localStorage key for the session relay key */
+  const SESSION_KEY = 'nuzlocke-session-key';
+
+  /**
+   * The relay server URL for live OBS sync.
+   * On the live site (Cloudflare Pages), this points to the Worker.
+   * On localhost, it falls back to the local server.js which also
+   * handles /api/save (legacy) — the relay endpoints are only
+   * available on the live Worker.
+   *
+   * Users can override this by setting window.NUZLOCKE_RELAY_URL
+   * before the script loads, or it auto-detects from the hostname.
+   */
+  const RELAY_URL = window.NUZLOCKE_RELAY_URL ||
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? ''  // localhost: no relay needed, uses /api/save + polling
+      : '/api');  // live site: relay is at /api/* on the same origin
+
   /** @const {string} Default example YAML shown on first visit */
   const EXAMPLE_YAML = `- Route 201
 Nightfall & Daybreak
@@ -880,6 +898,29 @@ Geodude & Psyduck`;
   }
 
   // ============================================================
+  //  SESSION KEY - for live relay sync
+  // ============================================================
+
+  /**
+   * Get or generate a persistent session key.
+   * The key is stored in localStorage so it survives page reloads.
+   * The overlay URL includes this key so OBS can subscribe to updates.
+   *
+   * @returns {string} 8-character alphanumeric session key
+   */
+  function getSessionKey() {
+    let key = localStorage.getItem(SESSION_KEY);
+    if (!key) {
+      // Generate a random 8-char key (a-z, 0-9)
+      key = Array.from({ length: 8 }, () =>
+        'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]
+      ).join('');
+      localStorage.setItem(SESSION_KEY, key);
+    }
+    return key;
+  }
+
+  // ============================================================
   //  LOCALSTORAGE - LOAD & SAVE
   // ============================================================
 
@@ -909,7 +950,7 @@ Geodude & Psyduck`;
       saveIndicator.className = 'save-indicator saved';
       updateUrlDisplay();
 
-      // POST the YAML data to the server so it writes to run.yaml.
+      // POST the YAML data to the local server so it writes to run.yaml.
       // The overlay (including OBS Browser Source) polls run.yaml
       // every second and will pick up the change via If-Modified-Since.
       fetch('/api/save', {
@@ -919,6 +960,21 @@ Geodude & Psyduck`;
       }).catch(() => {
         // Server might not be running (e.g. live site), that's fine
       });
+
+      // POST the YAML data to the relay server for live OBS sync.
+      // On the live site (Cloudflare Pages), this goes to the Worker
+      // which broadcasts via SSE to all connected OBS overlays.
+      // On localhost, RELAY_URL is empty so this is skipped.
+      if (RELAY_URL) {
+        const key = getSessionKey();
+        fetch(`${RELAY_URL}/update?key=${encodeURIComponent(key)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: editor.value,
+        }).catch(() => {
+          // Relay might not be available (e.g. local dev without Worker)
+        });
+      }
     }, 400);
   }
 
@@ -968,18 +1024,35 @@ Geodude & Psyduck`;
   }
 
   /**
-   * Build the overlay URL with YAML data embedded in the hash fragment.
-   * The overlay reads this hash instead of relying on localStorage
-   * (which is isolated per browser profile and doesn't work in OBS).
+   * Build the overlay URL.
    *
-   * Format: /overlay.html#base64:base64encodeddata
+   * On the live site (where RELAY_URL is set), the URL includes a session
+   * key (?key=xxx) instead of the hash. The overlay subscribes to the relay
+   * via SSE and receives live updates whenever the YAML changes.
+   *
+   * On localhost (where RELAY_URL is empty), the URL embeds the YAML data
+   * in the hash fragment (#base64:...). The overlay reads this hash and
+   * polls /run.yaml for updates.
+   *
+   * Format (live):  /overlay.html?key=abc12345&font=...
+   * Format (local): /overlay.html?font=...#base64:base64data
    *
    * @returns {string}
    */
   function buildOverlayUrl() {
-    const yamlData = editor.value;
-    const encoded = btoa(unescape(encodeURIComponent(yamlData)));
-    return getBaseUrl() + buildParamString() + '#base64:' + encoded;
+    const base = getBaseUrl() + buildParamString();
+
+    if (RELAY_URL) {
+      // Live site: use session key for SSE relay
+      const key = getSessionKey();
+      const separator = buildParamString() ? '&' : '?';
+      return base + separator + 'key=' + encodeURIComponent(key);
+    } else {
+      // Localhost: embed data in hash
+      const yamlData = editor.value;
+      const encoded = btoa(unescape(encodeURIComponent(yamlData)));
+      return base + '#base64:' + encoded;
+    }
   }
 
   /** Update the URL display text. */

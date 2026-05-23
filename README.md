@@ -193,24 +193,40 @@ The font is loaded dynamically via the Google Fonts CSS2 API. FLURO is always ke
 
 ---
 
-## Data Source Priority
+## Live OBS Sync (Relay System)
 
-The overlay reads data from these sources, in order:
+The overlay supports **two modes** for live updates, auto-detected based on the URL:
 
-| Priority | Source | How it works |
-|----------|--------|-------------|
-| 1 | **URL hash** | When you copy the URL, your YAML data is base64-encoded into the URL fragment (`#base64:...`). The overlay decodes it on load. This is the primary method for OBS. |
-| 2 | **`/run.yaml` (polling)** | When you edit YAML on the setup page, it POSTs the data to `/api/save` on the server. The server writes it to `public/run.yaml`. The overlay polls `/run.yaml` every **1 second** with `If-Modified-Since` headers — only fetches when the file actually changes. This works in OBS because both the browser and OBS talk to the same server. |
-| 3 | **localStorage** | Fallback for when you open the overlay in the same browser as the setup page. |
+### Mode 1: Cloudflare Relay (Live Site)
 
-### How live updates work
+When hosted on Cloudflare Pages, the setup page generates a URL with a **session key** (`?key=abc12345`). The overlay uses this key to poll the **Pages Function** (`GET /api/data?key=abc12345`) every 1 second.
 
 ```
 You type in the setup page (index.html)
        ↓
 Saves to localStorage (your data persists)
        ↓
-POSTs YAML to /api/save on the server
+POSTs YAML to Pages Function (/api/update?key=abc12345)
+       ↓
+Function writes to D1 (serverless SQLite)
+       ↓
+Overlay (in OBS) polls /api/data?key=abc12345 every 1 second
+       ↓
+Content-based change detection → re-renders only when data changes
+```
+
+**~1 second delay** between typing and OBS update — perfectly fine for a stream overlay. Uses **D1** (free tier: 100k writes/month, 5M reads/month).
+
+### Mode 2: Localhost (Polling)
+
+When running locally (`localhost:3000`), the URL embeds the YAML data in the hash fragment (`#base64:...`). The overlay polls `/run.yaml` every 1 second for changes.
+
+```
+You type in the setup page (index.html)
+       ↓
+Saves to localStorage (your data persists)
+       ↓
+POSTs YAML to /api/save on the local server
        ↓
 Server writes to public/run.yaml (updates file timestamp)
        ↓
@@ -219,7 +235,88 @@ Overlay (in OBS) polls /run.yaml every 1 second
 If-Modified-Since detects the change → fetches new data → re-renders
 ```
 
-This works because **both** your browser and OBS's Browser Source make HTTP requests to the **same server**. The overlay doesn't need localStorage or BroadcastChannel — it just fetches the file that the server keeps updated.
+---
+
+## Cloudflare Pages + D1 Deployment
+
+The relay system uses **Cloudflare Pages Functions** with **D1** (serverless SQLite) for real-time sync. This is **free tier friendly** — D1 gives 100k writes/month and 5M rows read/month.
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 18+
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm install -g wrangler`)
+- A Cloudflare account with Pages and D1 enabled
+
+### Step 1: Create the D1 database
+
+```bash
+# Login to Cloudflare
+wrangler login
+
+# Create the D1 database
+wrangler d1 create nuzlocke-overlay-db
+```
+
+→ This will output a `database_id`. Copy it.
+
+### Step 2: Update `wrangler.toml`
+
+Open `wrangler.toml` and replace `YOUR_DATABASE_ID_HERE` with the ID from Step 1.
+
+### Step 3: Initialize the database schema
+
+```bash
+wrangler d1 execute nuzlocke-overlay-db --remote --command="CREATE TABLE IF NOT EXISTS sessions (key TEXT PRIMARY KEY, yaml TEXT NOT NULL, updated_at INTEGER NOT NULL)"
+```
+
+### Step 4: Deploy to Cloudflare Pages
+
+```bash
+# Deploy the Pages project (includes static assets + API functions + D1 binding)
+wrangler pages deploy public --d1 DB=nuzlocke-overlay-db
+```
+
+Or if you already have a Pages project connected to Git, add the D1 binding in the Cloudflare Dashboard:
+1. Go to your Pages project → **Settings** → **Functions** → **D1 database bindings**
+2. Add a binding with **Variable name:** `DB` and select your `nuzlocke-overlay-db` database
+3. Deploy your site (push to Git or use Wrangler)
+
+### How it works
+
+1. **Setup page** generates a random 8-character session key on first visit (stored in localStorage)
+2. On every keystroke, it POSTs the YAML to the Pages Function: `POST /api/update?key=abc12345`
+3. The function writes the YAML to D1 (SQLite) via an upsert
+4. **OBS overlay** polls `GET /api/data?key=abc12345` every 1 second
+5. Content-based change detection prevents unnecessary re-renders
+
+### Architecture
+
+```
+┌─────────────────────┐         ┌──────────────────────┐
+│  Browser (index.html)│         │   OBS (overlay.html) │
+│                     │         │                      │
+│  Key: "abc12345"    │         │  ?key=abc12345       │
+│                     │         │                      │
+│  Types → POST /api/ │         │  ← polls /api/data   │
+│         update?key= │         │     every 1 second   │
+└─────────┬───────────┘         └─────────┬────────────┘
+          │                               │
+          ▼                               ▼
+   ┌─────────────────────────────────────────┐
+   │  Cloudflare Pages Functions + D1        │
+   │                                         │
+   │  POST /api/update?key=xxx → upsert D1   │
+   │  GET  /api/data?key=xxx → read from D1  │
+   └─────────────────────────────────────────┘
+```
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `functions/api/update.js` | Pages Function: POST /api/update — writes YAML to D1 |
+| `functions/api/data.js` | Pages Function: GET /api/data — reads YAML from D1 |
+| `wrangler.toml` | Pages project configuration with D1 binding |
 
 ---
 
@@ -233,7 +330,12 @@ nuzlocke-overlay/
 │   ├── run.yaml         Fallback pairing data for local dev
 │   ├── fonts/           FLURO font files
 │   └── favicon/         Site icons
+├── functions/
+│   └── api/
+│       ├── update.js    Pages Function: POST /api/update (writes to D1)
+│       └── data.js      Pages Function: GET /api/data (reads from D1)
 ├── server.js            Static file server (Node.js, zero deps)
+├── wrangler.toml        Cloudflare Pages + D1 configuration
 ├── package.json
 ├── .gitignore
 └── README.md

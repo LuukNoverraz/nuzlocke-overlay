@@ -446,6 +446,22 @@
     /** @const {URLSearchParams} Parsed query string */
     const urlParams = new URLSearchParams(window.location.search);
 
+    /** @const {string|null} Session key for live relay sync (Cloudflare Worker) */
+    const SESSION_KEY = urlParams.get('key') || null;
+
+    /**
+     * The relay server URL for live OBS sync.
+     * When a session key is present, the overlay subscribes to the relay
+     * via SSE and receives live updates whenever the YAML changes.
+     *
+     * On the live site, the relay is at /api/* on the same origin.
+     * Users can override this by setting window.NUZLOCKE_RELAY_URL.
+     */
+    const RELAY_URL = window.NUZLOCKE_RELAY_URL ||
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? ''  // localhost: no relay, uses polling + hash
+        : '/api');  // live site: relay is at /api/* on the same origin
+
     /** @const {boolean} Global shiny override for all sprites */
     const SHINY = urlParams.get('shiny') === 'true';
 
@@ -1293,6 +1309,52 @@
     }
 
     // ============================================================
+    //  D1 RELAY POLLING
+    //  @section relay
+    //
+    //  When a session key (?key=xxx) is present in the URL, the overlay
+    //  polls the Pages Function (GET /api/data?key=xxx) every second.
+    //  The setup page POSTs YAML to /api/update?key=xxx on every
+    //  keystroke, which writes to D1. The overlay picks up the change
+    //  on the next poll.
+    //
+    //  This replaces the SSE subscription from the Durable Objects
+    //  approach — D1 is free tier friendly (100k writes/month).
+    // ============================================================
+
+    /**
+     * Start polling the D1 relay for live updates.
+     * Polls GET /api/data?key=xxx every POLL_INTERVAL_MS.
+     * Uses content-based change detection to avoid unnecessary re-renders.
+     *
+     * @param {string} key - Session key from the URL (?key=xxx).
+     */
+    function startRelayPolling(key) {
+      if (!RELAY_URL) {
+        console.log('[Overlay] No relay URL configured, skipping D1 polling');
+        return;
+      }
+
+      console.log(`[Overlay] Starting D1 relay polling for key: ${key}`);
+
+      if (refreshInterval) clearInterval(refreshInterval);
+
+      refreshInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`${RELAY_URL}/data?key=${encodeURIComponent(key)}`);
+          if (res.ok) {
+            const text = await res.text();
+            if (text && text.trim()) {
+              await parseAndRender(text, 'D1 relay');
+            }
+          }
+        } catch (e) {
+          // Silently ignore polling errors to avoid console spam in OBS
+        }
+      }, POLL_INTERVAL_MS);
+    }
+
+    // ============================================================
     //  INIT
     //  @section init
     // ============================================================
@@ -1304,6 +1366,39 @@
       if (FONT_NAME) {
         await loadGoogleFont(FONT_NAME, FONT_WEIGHTS);
       }
+
+      // ── Relay mode (live site with session key) ───────────────
+      // When a session key is present, the overlay loads data from the
+      // relay's one-shot endpoint and subscribes to SSE for live updates.
+      // No polling, no hash, no localStorage needed.
+      if (SESSION_KEY && RELAY_URL) {
+        console.log(`[Overlay] Relay mode: key=${SESSION_KEY}`);
+
+        try {
+          // Initial load from relay
+          const res = await fetch(`${RELAY_URL}/data?key=${encodeURIComponent(SESSION_KEY)}`);
+          if (res.ok) {
+            const text = await res.text();
+            if (text && text.trim()) {
+              await parseAndRender(text, 'relay (initial)');
+            }
+          }
+        } catch (e) {
+          console.warn('[Overlay] Failed to load initial data from relay:', e.message);
+        }
+
+        // Show overlay with fade-in
+        overlayEl.classList.remove('hidden');
+
+        // Start D1 relay polling for live updates
+        startRelayPolling(SESSION_KEY);
+
+        return; // Skip all other loading methods
+      }
+
+      // ── Legacy mode (hash / localStorage / run.yaml) ──────────
+      // Used on localhost or when no session key is present.
+      // Falls back to URL hash, localStorage, or /run.yaml polling.
 
       // Initial load
       await loadFromRunTxt();
