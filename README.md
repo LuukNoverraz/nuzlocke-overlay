@@ -38,9 +38,10 @@ Just visit the live site:
 https://nuzlocke-overlay.noverraz.tv
 ```
 
-1. Type your pairings in the YAML editor (auto-saves to localStorage)
-2. Click **"Copy Overlay URL"**
-3. Paste the URL into OBS as a Browser Source
+1. The editor starts **empty** with a grey placeholder showing the format
+2. Click **"Load Example"** to see sample data, or start typing your own pairings
+3. Your data auto-saves to localStorage — come back anytime and it's still there
+4. Click **"Copy Overlay URL"** and paste into OBS as a Browser Source
 
 No server, no installation, everything runs in your browser.
 
@@ -59,11 +60,10 @@ Then open `http://localhost:3000/` in your browser.
 ### Use the Web Setup Page (Recommended)
 
 1. Open the setup page: either [online](https://nuzlocke-overlay.noverraz.tv) or locally at `http://localhost:3000/`
-2. Type your pairings in the YAML editor -- it auto-saves every keystroke
-3. Click **"Copy Overlay URL"** to copy the link
-4. Paste the link into OBS as a Browser Source
-
-Your data is saved in your browser's localStorage. Come back anytime and it will still be there.
+2. The editor starts **empty** with a grey placeholder showing the format — click **"Load Example"** to see sample data, or start typing your own pairings
+3. Your data auto-saves to localStorage on every keystroke — come back anytime and it's still there
+4. Click **"Copy Overlay URL"** to copy the link
+5. Paste the link into OBS as a Browser Source
 
 **Live editing:** While the overlay is open in OBS, you can go back to the setup page, edit the text, and the overlay will update automatically within a few seconds. No need to refresh the browser source.
 
@@ -272,14 +272,22 @@ wrangler d1 execute nuzlocke-overlay-db --remote --command="CREATE TABLE IF NOT 
 ### Step 4: Deploy to Cloudflare Pages
 
 ```bash
-# Deploy the Pages project (includes static assets + API functions + D1 binding)
-wrangler pages deploy public --d1 DB=nuzlocke-overlay-db
+# Deploy the Pages project (static assets + API functions)
+wrangler pages deploy public
 ```
 
-Or if you already have a Pages project connected to Git, add the D1 binding in the Cloudflare Dashboard:
+### Step 5: Add the D1 binding in the Cloudflare Dashboard
+
+The `--d1` flag is not supported by `wrangler pages deploy`. You must add the D1 binding in the Dashboard:
+
 1. Go to your Pages project → **Settings** → **Functions** → **D1 database bindings**
-2. Add a binding with **Variable name:** `DB` and select your `nuzlocke-overlay-db` database
-3. Deploy your site (push to Git or use Wrangler)
+2. Click **"Add binding"**
+3. Set **Variable name:** `DB`
+4. Select your `nuzlocke-overlay-db` database
+5. Click **Save**
+6. Redeploy your site (push to Git or run `wrangler pages deploy public` again)
+
+> **Note:** Make sure to add the binding to both **Production** and **Preview** environments if you want to test on preview branches.
 
 ### How it works
 

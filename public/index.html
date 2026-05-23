@@ -846,7 +846,7 @@ Piplup (Shiny)         <span class="comment-hint">shows shiny sprite</span></pre
       ? ''  // localhost: no relay needed, uses /api/save + polling
       : '/api');  // live site: relay is at /api/* on the same origin
 
-  /** @const {string} Default example YAML shown on first visit */
+  /** @const {string} Default example YAML shown when user clicks "Load Example" */
   const EXAMPLE_YAML = `- Route 201
 Nightfall & Daybreak
 Piplup & Piplup
@@ -924,13 +924,13 @@ Geodude & Psyduck`;
   //  LOCALSTORAGE - LOAD & SAVE
   // ============================================================
 
-  /** Load saved YAML from localStorage, or fall back to example. */
+  /** Load saved YAML from localStorage, or start empty with placeholder. */
   function loadSavedYaml() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved && saved.trim()) {
       editor.value = saved;
     } else {
-      editor.value = EXAMPLE_YAML;
+      editor.value = '';
     }
   }
 
