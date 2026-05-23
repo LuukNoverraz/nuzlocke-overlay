@@ -1021,6 +1021,15 @@
     }
 
     /**
+     * Flag set to true when the initial load used the URL hash.
+     * When true, polling is disabled because the hash is a self-contained
+     * snapshot — there's nothing to poll, and polling would overwrite
+     * the hash data with stale localStorage or a 404 from /run.yaml.
+     * @type {boolean}
+     */
+    let hasUrlHash = false;
+
+    /**
      * Main load function - tries sources in priority order.
      *
      * Priority:
@@ -1035,6 +1044,7 @@
         // Priority 1: URL hash fragment (works in OBS where localStorage is isolated)
         const hashYaml = loadFromUrlHash();
         if (hashYaml) {
+          hasUrlHash = true;
           await parseAndRender(hashYaml, 'URL hash');
           return;
         }
@@ -1252,6 +1262,14 @@
      *   2. localStorage — fallback for same-browser use
      */
     function startPolling() {
+      // If the overlay was loaded from a URL hash (self-contained snapshot),
+      // disable polling entirely. Polling would overwrite the hash data with
+      // stale localStorage or a 404 from /run.yaml on the live site.
+      if (hasUrlHash) {
+        console.log('[Overlay] Loaded from URL hash — polling disabled');
+        return;
+      }
+
       if (refreshInterval) clearInterval(refreshInterval);
 
       refreshInterval = setInterval(async () => {
