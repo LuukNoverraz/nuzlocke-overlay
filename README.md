@@ -5,7 +5,7 @@
 
 <p align="center">
   <a href="https://nuzlocke-overlay.noverraz.tv" target="_blank">
-    <img src="https://img.shields.io/badge/live-nuzlocke--overlay.noverraz.tv-9146FF?style=for-the-badge&logo=twitch&logoColor=white" alt="Live at nuzlocke-overlay.noverraz.tv" />
+    <img src="https://img.shields.io/badge/live-nuzlocke--overlay.noverraz.tv-9146FF?style=for-the-badge&logo=twitch&logoColor=white" alt="nuzlocke-overlay.noverraz.tv" />
   </a>
 </p>
 
@@ -14,7 +14,6 @@
   <img src="https://img.shields.io/badge/OBS-Browser%20Source-6633cc?style=flat-square" alt="OBS Browser Source" />
   <img src="https://img.shields.io/badge/Pok%C3%A9mon-Gen%201--9-ff0000?style=flat-square" alt="Pokémon Gen 1-9" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License" />
-  <img src="https://img.shields.io/badge/powered%20by-FLURO-00d4aa?style=flat-square" alt="Powered by FLURO" />
 </p>
 
 <p align="center">
