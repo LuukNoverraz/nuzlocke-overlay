@@ -4,8 +4,8 @@
 </h1>
 
 <p align="center">
-  <a href="https://nuzlocke-overlay.noverraz.tv" target="_blank">
-    <img src="https://img.shields.io/badge/live-nuzlocke--overlay.noverraz.tv-9146FF?style=for-the-badge&logo=twitch&logoColor=white" alt="nuzlocke-overlay.noverraz.tv" />
+  <a href="https://twitch.tv/NoverrazTV" target="_blank">
+    <img src="https://img.shields.io/badge/live-NoverrazTV-9146FF?style=for-the-badge&logo=twitch&logoColor=white" alt="NoverrazTV" />
   </a>
 </p>
 
