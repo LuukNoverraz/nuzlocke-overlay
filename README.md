@@ -22,15 +22,13 @@
 
 Whether you are running a **Solo Nuzlocke** on your own or a **Soul Link** with a friend, this overlay shows your Pokémon team live on stream. It works as a **Browser Source** in OBS. No plugins or extra software required.
 
-Includes a **web-based setup page** where you can edit your pairings in-browser. Your data is saved in localStorage, so it persists when you come back. **Edit the text any time and the overlay updates live**, no need to refresh or restart OBS.
+Includes a **web-based setup page** where you can edit your team in-browser. Your data is saved in localStorage, so it persists when you come back. **Edit the text any time and the overlay updates live**, no need to refresh or restart OBS.
 
-The site is hosted at **[nuzlocke-overlay.noverraz.tv](https://nuzlocke-overlay.noverraz.tv)** -- just visit, type your pairings, and copy the overlay URL.
+The site is hosted at **[nuzlocke-overlay.noverraz.tv](https://nuzlocke-overlay.noverraz.tv)**. Just visit, type your team out, and copy the overlay URL.
 
 ---
 
 ## Quick Start
-
-### Online (Recommended)
 
 Just visit the live site:
 
@@ -39,37 +37,23 @@ https://nuzlocke-overlay.noverraz.tv
 ```
 
 1. The editor starts **empty** with a grey placeholder showing the format
-2. Click **"Load Example"** to see sample data, or start typing your own pairings
-3. Your data auto-saves to localStorage — come back anytime and it's still there
+2. Click **"Load Example"** to see sample data, or start typing your own team members
+3. Your data auto-saves to localStorage, so you can come back anytime and it's still there
 4. Click **"Copy Overlay URL"** and paste into OBS as a Browser Source
 
 No server, no installation, everything runs in your browser.
-
-### Local Development
-
-```bash
-node server.js
-```
-
-Then open `http://localhost:3000/` in your browser.
 
 ---
 
 ## How It Works
 
-### Use the Web Setup Page (Recommended)
-
-1. Open the setup page: either [online](https://nuzlocke-overlay.noverraz.tv) or locally at `http://localhost:3000/`
-2. The editor starts **empty** with a grey placeholder showing the format — click **"Load Example"** to see sample data, or start typing your own pairings
-3. Your data auto-saves to localStorage on every keystroke — come back anytime and it's still there
+1. Open the setup page at [nuzlocke-overlay.noverraz.tv](https://nuzlocke-overlay.noverraz.tv)
+2. The editor starts **empty** with a grey placeholder showing the format. Click **"Load Example"** to see sample data, or start typing your own team
+3. Your data auto-saves to localStorage on every keystroke, so you can come back anytime and it's still there
 4. Click **"Copy Overlay URL"** to copy the link
 5. Paste the link into OBS as a Browser Source
 
 **Live editing:** While the overlay is open in OBS, you can go back to the setup page, edit the text, and the overlay will update automatically within a few seconds. No need to refresh the browser source.
-
-### Edit `public/run.yaml` Directly
-
-For local development or if you prefer editing files directly, edit `public/run.yaml` and the overlay will auto-update.
 
 ---
 
@@ -110,11 +94,11 @@ Starly & Bidoof
 ```
 
 **Format rules:**
-- **`- Route Name`:** Starts a new pairing
+- **`- Route Name`:** Starts a new team member entry
 - **Next line:** Nicknames: single nickname (Solo) or `Player1 & Player2` (Soul Link)
 - **Next line:** Species: single species (Solo) or `Player1 & Player2` (Soul Link)
   - **Auto-detection:** If the species line contains `&`, it is Soul Link mode. Otherwise, it is Solo mode.
-- **`(DEAD)` or `(BOX)`** on a route line hides that pairing
+- **`(DEAD)` or `(BOX)`** on a route line hides that team member entry
 - **`(Shiny)`** after a species shows shiny sprite for that Pokemon
 - Blank lines are ignored
 
@@ -193,141 +177,6 @@ The font is loaded dynamically via the Google Fonts CSS2 API. FLURO is always ke
 
 ---
 
-## Live OBS Sync (Relay System)
-
-The overlay supports **two modes** for live updates, auto-detected based on the URL:
-
-### Mode 1: Cloudflare Relay (Live Site)
-
-When hosted on Cloudflare Pages, the setup page generates a URL with a **session key** (`?key=abc12345`). The overlay uses this key to poll the **Pages Function** (`GET /api/data?key=abc12345`) every 1 second.
-
-```
-You type in the setup page (index.html)
-       ↓
-Saves to localStorage (your data persists)
-       ↓
-POSTs YAML to Pages Function (/api/update?key=abc12345)
-       ↓
-Function writes to D1 (serverless SQLite)
-       ↓
-Overlay (in OBS) polls /api/data?key=abc12345 every 1 second
-       ↓
-Content-based change detection → re-renders only when data changes
-```
-
-**~1 second delay** between typing and OBS update — perfectly fine for a stream overlay. Uses **D1** (free tier: 100k writes/month, 5M reads/month).
-
-### Mode 2: Localhost (Polling)
-
-When running locally (`localhost:3000`), the URL embeds the YAML data in the hash fragment (`#base64:...`). The overlay polls `/run.yaml` every 1 second for changes.
-
-```
-You type in the setup page (index.html)
-       ↓
-Saves to localStorage (your data persists)
-       ↓
-POSTs YAML to /api/save on the local server
-       ↓
-Server writes to public/run.yaml (updates file timestamp)
-       ↓
-Overlay (in OBS) polls /run.yaml every 1 second
-       ↓
-If-Modified-Since detects the change → fetches new data → re-renders
-```
-
----
-
-## Cloudflare Pages + D1 Deployment
-
-The relay system uses **Cloudflare Pages Functions** with **D1** (serverless SQLite) for real-time sync. This is **free tier friendly** — D1 gives 100k writes/month and 5M rows read/month.
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 18+
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm install -g wrangler`)
-- A Cloudflare account with Pages and D1 enabled
-
-### Step 1: Create the D1 database
-
-```bash
-# Login to Cloudflare
-wrangler login
-
-# Create the D1 database
-wrangler d1 create nuzlocke-overlay-db
-```
-
-→ This will output a `database_id`. Copy it.
-
-### Step 2: Update `wrangler.toml`
-
-Open `wrangler.toml` and replace `YOUR_DATABASE_ID_HERE` with the ID from Step 1.
-
-### Step 3: Initialize the database schema
-
-```bash
-wrangler d1 execute nuzlocke-overlay-db --remote --command="CREATE TABLE IF NOT EXISTS sessions (key TEXT PRIMARY KEY, yaml TEXT NOT NULL, updated_at INTEGER NOT NULL)"
-```
-
-### Step 4: Deploy to Cloudflare Pages
-
-```bash
-# Deploy the Pages project (static assets + API functions)
-wrangler pages deploy public
-```
-
-### Step 5: Add the D1 binding in the Cloudflare Dashboard
-
-The `--d1` flag is not supported by `wrangler pages deploy`. You must add the D1 binding in the Dashboard:
-
-1. Go to your Pages project → **Settings** → **Functions** → **D1 database bindings**
-2. Click **"Add binding"**
-3. Set **Variable name:** `DB`
-4. Select your `nuzlocke-overlay-db` database
-5. Click **Save**
-6. Redeploy your site (push to Git or run `wrangler pages deploy public` again)
-
-> **Note:** Make sure to add the binding to both **Production** and **Preview** environments if you want to test on preview branches.
-
-### How it works
-
-1. **Setup page** generates a random 8-character session key on first visit (stored in localStorage)
-2. On every keystroke, it POSTs the YAML to the Pages Function: `POST /api/update?key=abc12345`
-3. The function writes the YAML to D1 (SQLite) via an upsert
-4. **OBS overlay** polls `GET /api/data?key=abc12345` every 1 second
-5. Content-based change detection prevents unnecessary re-renders
-
-### Architecture
-
-```
-┌─────────────────────┐         ┌──────────────────────┐
-│  Browser (index.html)│         │   OBS (overlay.html) │
-│                     │         │                      │
-│  Key: "abc12345"    │         │  ?key=abc12345       │
-│                     │         │                      │
-│  Types → POST /api/ │         │  ← polls /api/data   │
-│         update?key= │         │     every 1 second   │
-└─────────┬───────────┘         └─────────┬────────────┘
-          │                               │
-          ▼                               ▼
-   ┌─────────────────────────────────────────┐
-   │  Cloudflare Pages Functions + D1        │
-   │                                         │
-   │  POST /api/update?key=xxx → upsert D1   │
-   │  GET  /api/data?key=xxx → read from D1  │
-   └─────────────────────────────────────────┘
-```
-
-### Files
-
-| File | Purpose |
-|------|---------|
-| `functions/api/update.js` | Pages Function: POST /api/update — writes YAML to D1 |
-| `functions/api/data.js` | Pages Function: GET /api/data — reads YAML from D1 |
-| `wrangler.toml` | Pages project configuration with D1 binding |
-
----
-
 ## Project Structure
 
 ```
@@ -335,15 +184,10 @@ nuzlocke-overlay/
 ├── public/
 │   ├── index.html       Setup page (YAML editor, URL generator)
 │   ├── overlay.html     OBS Browser Source (the overlay)
-│   ├── run.yaml         Fallback pairing data for local dev
+│   ├── run.yaml         Fallback team data for local dev
 │   ├── fonts/           FLURO font files
 │   └── favicon/         Site icons
-├── functions/
-│   └── api/
-│       ├── update.js    Pages Function: POST /api/update (writes to D1)
-│       └── data.js      Pages Function: GET /api/data (reads from D1)
 ├── server.js            Static file server (Node.js, zero deps)
-├── wrangler.toml        Cloudflare Pages + D1 configuration
 ├── package.json
 ├── .gitignore
 └── README.md
