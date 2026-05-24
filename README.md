@@ -4,16 +4,22 @@
 </h1>
 
 <p align="center">
-  A <strong>lightweight, standalone OBS Browser Source</strong> for displaying live <strong>Nuzlocke</strong> teams.<br>
-  Supports <strong>Solo Nuzlocke</strong> (single player) and <strong>Soul Link</strong> (two players, linked pairs) runs.
+  <a href="https://nuzlocke-overlay.noverraz.tv" target="_blank">
+    <img src="https://img.shields.io/badge/live-nuzlocke--overlay.noverraz.tv-9146FF?style=for-the-badge&logo=twitch&logoColor=white" alt="Live at nuzlocke-overlay.noverraz.tv" />
+  </a>
 </p>
 
 <p align="center">
-  <a href="https://nuzlocke-overlay.noverraz.tv" target="_blank">nuzlocke-overlay.noverraz.tv</a>
-  &nbsp;·&nbsp;
-  <a href="#quick-start">Quick Start</a>
-  &nbsp;·&nbsp;
-  <a href="#obs-setup">OBS Setup</a>
+  <img src="https://img.shields.io/badge/Nuzlocke-Soul%20Link-ff69b4?style=flat-square" alt="Nuzlocke Soul Link" />
+  <img src="https://img.shields.io/badge/OBS-Browser%20Source-6633cc?style=flat-square" alt="OBS Browser Source" />
+  <img src="https://img.shields.io/badge/Pok%C3%A9mon-Gen%201--9-ff0000?style=flat-square" alt="Pokémon Gen 1-9" />
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License" />
+  <img src="https://img.shields.io/badge/powered%20by-FLURO-00d4aa?style=flat-square" alt="Powered by FLURO" />
+</p>
+
+<p align="center">
+  A <strong>lightweight, standalone OBS Browser Source</strong> for displaying live <strong>Nuzlocke</strong> teams.<br>
+  Supports <strong>Solo Nuzlocke</strong> (single player) and <strong>Soul Link</strong> (two players, linked pairs) runs.
 </p>
 
 ---
@@ -196,6 +202,11 @@ nuzlocke-overlay/
 ---
 
 ## License
+
+<p align="center">
+  <img src="https://img.shields.io/badge/made%20with-%E2%9D%A4-red?style=flat-square" alt="Made with love" />
+  <img src="https://img.shields.io/badge/streaming-nuzlocke--overlay.noverraz.tv-9146FF?style=flat-square&logo=twitch" alt="Streaming on Twitch" />
+</p>
 
 [MIT](LICENSE)
 
